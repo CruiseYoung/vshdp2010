@@ -44,10 +44,18 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     var element = XDocument.Load(settingsFile).Root.Elements().Where(x => x.Name.LocalName == "proxy").Single();
 
                     _proxy = new WebProxy(element.Attributes().Where(x => x.Name.LocalName == "address").Single().Value);
-                    _proxy.Credentials = new NetworkCredential(
-                        element.Attributes().Where(x => x.Name.LocalName == "login").Single().Value,
-                        element.Attributes().Where(x => x.Name.LocalName == "password").Single().Value,
-                        element.Attributes().Where(x => x.Name.LocalName == "domain").Single().Value);
+                    if (element.Attributes().Any(x => x.Name.LocalName == "default" && (x.Value == "1" || x.Value == "true")))
+					{
+						_proxy.UseDefaultCredentials = true;
+                        _proxy.Credentials = CredentialCache.DefaultNetworkCredentials;
+					}
+					else
+					{
+						_proxy.Credentials = new NetworkCredential(
+							element.Attributes().Where(x => x.Name.LocalName == "login").Single().Value,
+							element.Attributes().Where(x => x.Name.LocalName == "password").Single().Value,
+							element.Attributes().Where(x => x.Name.LocalName == "domain").Single().Value);
+					}
 
                     _client.Proxy = _proxy;
                 }
