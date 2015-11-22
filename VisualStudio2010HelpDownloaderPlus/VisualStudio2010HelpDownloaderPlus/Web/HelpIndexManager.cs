@@ -536,7 +536,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 CreateElement("span", "locale", product.Locale),
                 CreateElement("span", "name", product.Name),
                 CreateElement("span", "description", product.Description),
-                //iconElement,
+                iconElement,
                 productGroupLinkElement
             );
             var bookListElement = CreateElement("div", "book-list", null);
@@ -572,7 +572,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     CreateElement("span", "name", book.Name),
                     CreateElement("span", "locale", book.Locale),
                     CreateElement("span", "description", book.Description),
-                    iconBookElement,
+                    //iconBookElement,
                     linkElement);
 
                 bookListElement.Add(bookElement);
