@@ -13,9 +13,6 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
     /// </summary>
     internal static class HelpIndexManager
     {
-        public const string BRANDING_PACKAGE_NAME1 = "dev10";
-        public const string BRANDING_PACKAGE_NAME2 = "dev10-ie6";
-
         #region XElement extension
 
         private static string GetClassName(this XElement element)
@@ -70,20 +67,25 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="item">Item.</param>
         /// <returns>File name.</returns>
-        public static string CreateItemFileName(ItemBase item, string locLanguage)
+        public static string CreateItemFileName(ItemBase item, string selLocale)
         {
             if (null == item)
                 return null;
 
             if (item is Product)
             {
-                if (null == locLanguage)
+                if (null == selLocale)
                     return string.Format(CultureInfo.InvariantCulture, "product-{0}.html", item.Code);
                 else
-                    return string.Format(CultureInfo.InvariantCulture, "product-{0}({1}).html", item.Code, locLanguage);
+                    return string.Format(CultureInfo.InvariantCulture, "product-{0}({1}).html", item.Code, selLocale);
             }
             else if (item is Book)
-                return string.Format(CultureInfo.InvariantCulture, "book-{0}-{1}.html", item.Code, item.Locale.Name);
+            {
+                if (item.Locale.ToLowerInvariant() == "en-us")
+                    return string.Format(CultureInfo.InvariantCulture, "book-{0}.html", item.Code);
+                else
+                    return string.Format(CultureInfo.InvariantCulture, "book-{0}({1}).html", item.Code, item.Locale);
+            }
             else
                 return null;
         }
@@ -98,11 +100,12 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             if (null == package)
                 return null;
 
-            if ((package.Name != BRANDING_PACKAGE_NAME1) &&
-                (package.Name != BRANDING_PACKAGE_NAME2))
-                return string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", package.Name/*.ToLowerInvariant()*/, package.Tag);
+            string fileName = null;
+            if (package.PackageEtag != null)
+                fileName = string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", package.Name, package.PackageEtag);
             else
-                return string.Format(CultureInfo.InvariantCulture, "{0}.cab", package.Name/*.ToLowerInvariant()*/);
+                fileName = string.Format(CultureInfo.InvariantCulture, "{0}.cab", package.Name);
+            return fileName;
         }
 
         #region Load information methods
@@ -112,9 +115,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="data">Document data.</param>
         /// <returns>List of products groups.</returns>
-        public static ICollection<ProductsGroup> LoadProductGroups(byte[] data)
+        public static ICollection<ProductGroup> LoadProductGroups(byte[] data)
         {
-            Contract.Ensures(null != Contract.Result<ICollection<ProductsGroup>>());
+            Contract.Ensures(null != Contract.Result<ICollection<ProductGroup>>());
 
             XDocument document = null;
 
@@ -126,24 +129,26 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     .Where(x => x.GetClassName() == "product-group-list").Take(1).Single().Elements()
                         .Where(x => x.GetClassName() == "product-group");
 
-            var result = new List<ProductsGroup>();
+            var result = new List<ProductGroup>();
 
             foreach (var x in query)
                 result.Add(
-                    new ProductsGroup()
+                    new ProductGroup()
                     {
-                        Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                        //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                        Locale = x.GetChildClassValue("locale"),
                         Name = x.GetChildClassValue("name"),
                         Description = x.GetChildClassValue("description"),
-                        //IconLink = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-						IconLink = x.GetChildClassAttributeValue("icon", "src"),
-                        IconLinkDescription = x.GetChildClassAttributeValue("icon", "alt"),
+                        //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+						IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                        IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
                         Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-group-link", "href")),
-						CodeLink = x.GetChildClassAttributeValue("product-group-link", "href"),
-                        CodeDescription = x.GetChildClassValue("product-group-link")
+						Link = x.GetChildClassAttributeValue("product-group-link", "href"),
+                        LinkDescription = x.GetChildClassValue("product-group-link")
                     }
                 );
 
+            //result.Sort();
             return result;
         }
 
@@ -152,7 +157,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="data">Document data.</param>
         /// <returns>List of products.</returns>
-        public static ICollection<Product> LoadProducts(byte[] data)
+        public static ICollection<Product> LoadProducts(ProductGroup productGroup, byte[] data)
         {
             Contract.Ensures(null != Contract.Result<ICollection<Product>>());
 
@@ -160,6 +165,14 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
+
+
+            var detailsElement = document.Root.Elements()
+                .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "details").Take(1).Single();
+
+            productGroup.ProductGroupsLink = detailsElement.GetChildClassAttributeValue("product-groups-link", "href");
+            productGroup.ProductGroupsDescription = detailsElement.GetChildClassValue("product-groups-link");
 
             var query = document.Root.Elements()
                 .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
@@ -175,10 +188,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             //            Locale = new Locale() { Code = x.GetChildClassValue("locale") },
             //            Name = x.GetChildClassValue("name"),
             //            Description = x.GetChildClassValue("description"),
-            //            IconLink = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-            //            IconLinkDescription = x.GetChildClassAttributeValue("icon", "alt"),
+            //            IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+            //            IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
             //            Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-link", "href")),
-            //            CodeDescription = x.GetChildClassValue("product-link")
+            //            LinkDescription = x.GetChildClassValue("product-link")
             //        }
             //    );
 
@@ -186,21 +199,27 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             {
                 var product = new Product()
                     {
-                        Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                        Locale =  x.GetChildClassValue("locale"),
+
+                        //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
                         Name = x.GetChildClassValue("name"),
                         Description = x.GetChildClassValue("description"),
-                        //IconLink = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-						IconLink = x.GetChildClassAttributeValue("icon", "src"),
-                        IconLinkDescription = x.GetChildClassAttributeValue("icon", "alt"),
+                        //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+						IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                        IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
+						Link = x.GetChildClassAttributeValue("product-link", "href"),
                         Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-link", "href")),
-						CodeLink = x.GetChildClassAttributeValue("product-link", "href"),
-                        CodeDescription = x.GetChildClassValue("product-link")
+                        LinkDescription = x.GetChildClassValue("product-link"),
+
+                        ProductGroupCode = productGroup.Code,
+                        ProductGroupsLink = productGroup.ProductGroupsLink,
+                        ProductGroupsDescription = productGroup.ProductGroupsDescription
                     };
 
                 var bAdd = true;
-                foreach (var y in result)
+                foreach (var productSrc in result)
                 {
-                    if (y.Code == product.Code)
+                    if (productSrc.Code == product.Code)
                     {
                         bAdd = false;
                         break;
@@ -219,6 +238,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     result.Add(product);
             }
 
+            //result.Sort();
             return result;
         }
 
@@ -227,21 +247,29 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="data">Document data.</param>
         /// <returns>List of books.</returns>
-        public static Tuple<ICollection<Book>, IList<Locale>> LoadBooks(byte[] data)
+        public static Tuple<ICollection<Book>, ICollection<string>> LoadBooks(Product product, byte[] data)
         {
-            Contract.Ensures(null != Contract.Result<Tuple<ICollection<Book>, IList<Locale>>>());
+            Contract.Ensures(null != Contract.Result<Tuple<ICollection<Book>, ICollection<string>>>());
 
             XDocument document = null;
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
+            var detailsElement = document.Root.Elements()
+                .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "details").Take(1).Single();
+
+            product.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
+            product.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
+
+
             string currentLink = document.Root.Elements()
                 .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
                     .Where(x => x.GetClassName() == "book-list").Take(1).Single().GetChildClassAttributeValue("book-list-link", "href");
 
             var result = new List<Book>();
-            var locales = new List<Locale>();
+            var locales = new List<string>();
 
             if (null != currentLink)
             {
@@ -253,21 +281,25 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 foreach (var x in query)
                 {
                     string code = x.GetChildClassAttributeValue("book-link", "href").Replace(currentLink, null).TrimStart('/');
-
                     if (code.Contains('/'))
                         code = code.Substring(0, code.IndexOf('/'));
 
                     var book = new Book()
                         {
                             Name = x.GetChildClassValue("name"),
-                            Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                            Locale = x.GetChildClassValue("locale"),
+                            //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
                             Description = x.GetChildClassValue("description"),
-                            //IconLink = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-							IconLink = x.GetChildClassAttributeValue("icon", "src"),
-                            IconLinkDescription = x.GetChildClassAttributeValue("icon", "alt"),
+                            //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+							IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                            IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
+							Link = x.GetChildClassAttributeValue("book-link", "href"),
+                            //Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("book-link", "href")),
                             Code = code,
-							CodeLink = x.GetChildClassAttributeValue("book-link", "href"),
-                            CodeDescription = x.GetChildClassValue("book-link")
+                            LinkDescription = x.GetChildClassValue("book-link"),
+
+                            ProductCode = product.Code,
+                            ProductGroupCode = product.ProductGroupCode
                         };
                     
                     result.Add(book);
@@ -277,7 +309,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 }
             }
 
-            return new Tuple<ICollection<Book>,IList<Locale>>(result, locales);
+            //result.Sort();
+            //locales.Sort();
+            return new Tuple<ICollection<Book>, ICollection<string>>(result, locales);
         }
         
         /// <summary>
@@ -301,14 +335,15 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     .Where(x => x.GetClassName() == "details").Take(1).Single();
 
             book.Vendor = detailsElement.GetChildClassValue("vendor");
-            book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
-            book.Name = detailsElement.GetChildClassValue("name");
-            book.Description = detailsElement.GetChildClassValue("description");
+            //book.Locale = detailsElement.GetChildClassValue("locale");
+            //book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
+            //book.Name = detailsElement.GetChildClassValue("name");
+            //book.Description = detailsElement.GetChildClassValue("description");
             book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"));
             book.ProductLink = detailsElement.GetChildClassAttributeValue("product-link", "href");
-            book.ProductName = detailsElement.GetChildClassValue("product-link");
+            book.ProductDescription = detailsElement.GetChildClassValue("product-link");
             book.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
-            book.ProductGroupName = detailsElement.GetChildClassValue("product-group-link");
+            book.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
             
             var query = document.Root.Elements()
                 .Where(x => x.GetClassName() == "book").Take(1).Single().Elements()
@@ -319,24 +354,25 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             foreach (var x in query)
             {
-                string name = x.GetChildClassValue("name");
-
                 result.Add(
                     new Package()
                     {
-                        Name = name,
+                        Name = x.GetChildClassValue("name"),
                         Deployed = x.GetChildClassValue("deployed"),
                         LastModified = DateTime.Parse(x.GetChildClassValue("last-modified")),
-                        Tag = x.GetChildClassValue("package-etag"),
-                        Link = x.GetChildClassAttributeValue("current-link", "href"),
-                        SizeBytes = long.Parse(x.GetChildClassValue("package-size-bytes"), CultureInfo.InvariantCulture),
-                        SizeBytesUncompressed = long.Parse(x.GetChildClassValue("package-size-bytes-uncompressed"), CultureInfo.InvariantCulture),
-                        ConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
-                        Locale = book.Locale //new Locale() { Code = detailsElement.GetChildClassValue("locale") }
+                        PackageEtag = x.GetChildClassValue("package-etag"),
+                        CurrentLink = x.GetChildClassAttributeValue("current-link", "href"),
+                        CurrentLinkDescription = x.GetChildClassValue("current-link"),
+                        PackageSizeBytes = long.Parse(x.GetChildClassValue("package-size-bytes"), CultureInfo.InvariantCulture),
+                        PackageSizeBytesUncompressed = long.Parse(x.GetChildClassValue("package-size-bytes-uncompressed"), CultureInfo.InvariantCulture),
+                        PackageConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
+                        PackageConstituentLinkDescription = x.GetChildClassValue("package-constituent-link"),
+                        Locale = book.Locale // Locale = detailsElement.GetChildClassValue("locale") 
                     }
                 );
             }
 
+            //result.Sort();
             return result;
         }
 
@@ -361,7 +397,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="products">Products list.</param>
         /// <returns>Document data.</returns>
-        public static string CreateSetupIndex(IEnumerable<Product> products, string locLanguage)
+        public static string CreateSetupIndex(IEnumerable<Product> products, string selLoc)
         {
             Contract.Requires(null != products);
 
@@ -375,50 +411,55 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             iconElement.SetAttributeValue(XName.Get("src", string.Empty), "../../../serviceapi/content/image/ic298417");
             iconElement.SetAttributeValue(XName.Get("alt", string.Empty), "VS 100 Icon");
 
+            (products as List<Product>).Sort();
             foreach (var product in products)
             {
                 var productElement = CreateElement("div", "product", null);
 
                 var iconProductElement = CreateElement("img", "icon", null);
-                iconProductElement.SetAttributeValue(XName.Get("src", string.Empty), product.IconLink);
-                iconProductElement.SetAttributeValue(XName.Get("alt", string.Empty), product.IconLinkDescription);
+                iconProductElement.SetAttributeValue(XName.Get("src", string.Empty), product.IconSrc);
+                iconProductElement.SetAttributeValue(XName.Get("alt", string.Empty), product.IconAlt);
 
-                bool includeLocLanguage = false;
-                if (locLanguage.ToLowerInvariant() == Locale.LocaleAll.Code.ToLowerInvariant())
+                bool includeSelLoc = false;
+                if (selLoc.ToLowerInvariant() == ItemBase.LocaleAll.ToLowerInvariant())
                 {
-                    includeLocLanguage = true;
+                    includeSelLoc = true;
                 }
-                else if (locLanguage.ToLowerInvariant() != "en-us")
+                else if (selLoc.ToLowerInvariant() != "en-us")
                 {
                     foreach (var book in product.Books)
                     {
-                        if (book.Locale.Name.ToLowerInvariant() == locLanguage.ToLowerInvariant())
+                        if (book.Locale.ToLowerInvariant() == selLoc.ToLowerInvariant())
                         {
-                            includeLocLanguage = true;
+                            includeSelLoc = true;
                             break;
                         }
                     }
                 }
 
-                var linkElement = CreateElement("a", "product-link", product.CodeDescription);
-                if (!includeLocLanguage)
-                    linkElement.SetAttributeValue(
+                var productLinkElement = CreateElement("a", "product-link", product.LinkDescription);
+                if (!includeSelLoc)
+                    productLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
                     CreateItemFileName(product, null));
                 else
-                    linkElement.SetAttributeValue(
+                    productLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    CreateItemFileName(product, locLanguage));
+                    CreateItemFileName(product, selLoc));
                 
                 productElement.Add(
-                    CreateElement("span", "locale", product.Locale.Code),
+                    CreateElement("span", "locale", product.Locale),
                     CreateElement("span", "name", product.Name),
                     CreateElement("span", "description", product.Description),
                     iconProductElement,
-                    linkElement);
+                    productLinkElement);
 
                 bodyElement.Add(productElement);
             }
+
+            var divElement = CreateElement("div", null, null);
+            divElement.SetAttributeValue(XName.Get("id", string.Empty), "GWDANG_HAS_BUILT");
+            bodyElement.Add(divElement);
 
             document.Root.Add(bodyElement);
 
@@ -430,7 +471,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="product">Product.</param>
         /// <returns>Document data.</returns>
-        public static string CreateProductBooksIndex(Product product, string locLanguage)
+        public static string CreateProductBooksIndex(Product product, string locLanguage, DateTime lastModified)
         {
             Contract.Requires(null != product);
             var document = new XDocument(
@@ -448,13 +489,23 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             metaDateElemet2.SetAttributeValue(
                     XName.Get("content", string.Empty),
                     string.Format(CultureInfo.InvariantCulture, @"http://services.mtps.microsoft.com/ServiceAPI/products/{0}/{1}",
-                    product.GroupCode, product.Code));
+                    product.ProductGroupCode, product.Code));
+
+            string lastModifiedFmt;
+            if ((lastModified.Millisecond % 10) == 0)
+                lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.ffZ";
+            else
+                lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.fffZ";
+            string lastModifiedStr = lastModified.ToUniversalTime()
+                .ToString(lastModifiedFmt, CultureInfo.InvariantCulture);
 
             var metaDateElemet3 = CreateElement("meta", null, null);
             metaDateElemet3.SetAttributeValue(XName.Get("http-equiv", string.Empty), "Date");
             metaDateElemet3.SetAttributeValue(
                     XName.Get("content", string.Empty),
-                    DateTime.Now.ToString("R"));
+                    //lastModified.ToString("R")
+                    lastModifiedStr
+                    );
 
             var linkElement1 = CreateElement("link", null, null);
             linkElement1.SetAttributeValue(XName.Get("type", string.Empty), "text/css");
@@ -466,59 +517,60 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             headElement.Add(metaDateElemet1);
             headElement.Add(metaDateElemet2);
-            //headElement.Add(metaDateElemet3);
+            headElement.Add(metaDateElemet3);
             headElement.Add(linkElement1);
             headElement.Add(titleElement);
 
             var iconElement = CreateElement("img", "icon", null);
-            iconElement.SetAttributeValue(XName.Get("src", string.Empty), product.IconLink);
-            iconElement.SetAttributeValue(XName.Get("alt", string.Empty), product.IconLinkDescription);
+            iconElement.SetAttributeValue(XName.Get("src", string.Empty), product.IconSrc);
+            iconElement.SetAttributeValue(XName.Get("alt", string.Empty), product.IconAlt);
 
-            //string productGroupsLink = string.Format(CultureInfo.InvariantCulture, @"../../../serviceapi/products/{0}", product.GroupCode);
-            string productGroupsLink = product.GroupCodeLink;
-            var productGroupsLinkElement = CreateElement("a", "product-groups-link", product.GroupCodeDescription);
-            productGroupsLinkElement.SetAttributeValue(XName.Get("href", string.Empty), productGroupsLink);
+            //string productGroupsLink = string.Format(CultureInfo.InvariantCulture, @"../../../serviceapi/products/{0}", product.ProductGroupsName);
+            var productGroupLinkElement = CreateElement("a", "product-group-link", product.ProductGroupDescription);
+            productGroupLinkElement.SetAttributeValue(XName.Get("href", string.Empty), product.ProductGroupLink);
 
             var bodyElement = CreateElement("body", "product", null);
             var detailsElement = CreateElement("div", "details", null);
             detailsElement.Add(
-                    //Product Group Details:
-                    CreateElement("span", "locale", product.Locale.Code),
-                    CreateElement("span", "name", product.Name),
-                    CreateElement("span", "description", product.Description),
-                    iconElement,
-                    productGroupsLinkElement
-                    );
+                //new XText("Product Details:\r\n"),
+                CreateElement("span", "locale", product.Locale),
+                CreateElement("span", "name", product.Name),
+                CreateElement("span", "description", product.Description),
+                iconElement,
+                productGroupLinkElement
+            );
             var bookListElement = CreateElement("div", "book-list", null);
+            //bookListElement.Add(new XText("This Product contains the following:\r\n"));
+            //This Product contains the following:\r\n 
             var bookListLinkElement = CreateElement("a", "book-list-link", "Books:");
-            //This Product contains the following 
 
             //bookListLinkElement.SetAttributeValue(
             //    XName.Get("href", string.Empty),
             //    string.Format(CultureInfo.InvariantCulture, @"../../../serviceapi/products/{0}/{1}/books",
-            //        product.GroupCode, product.Code));
+            //        product.ProductGroupsName, product.Code));
             bookListLinkElement.SetAttributeValue(
                 XName.Get("href", string.Empty),
                 string.Format(CultureInfo.InvariantCulture, @"{0}/books",
-                    product.CodeLink));
+                    product.Link));
             bookListElement.Add(bookListLinkElement);
 
+            (product.Books as List<Book>).Sort();
             foreach (var book in product.Books)
             {
                 var bookElement = CreateElement("div", "book", null);
 
                 var iconBookElement = CreateElement("img", "icon", null);
-                iconBookElement.SetAttributeValue(XName.Get("src", string.Empty), book.IconLink);
-                iconBookElement.SetAttributeValue(XName.Get("alt", string.Empty), book.IconLinkDescription);
+                iconBookElement.SetAttributeValue(XName.Get("src", string.Empty), book.IconSrc);
+                iconBookElement.SetAttributeValue(XName.Get("alt", string.Empty), book.IconAlt);
 
-                var linkElement = CreateElement("a", "book-link", book.CodeDescription);
+                var linkElement = CreateElement("a", "book-link", book.LinkDescription);
                 linkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
                     CreateItemFileName(book, null));
 
                 bookElement.Add(
                     CreateElement("span", "name", book.Name),
-                    CreateElement("span", "locale", book.Locale.Code),
+                    CreateElement("span", "locale", book.Locale),
                     CreateElement("span", "description", book.Description),
                     iconBookElement,
                     linkElement);
@@ -526,9 +578,14 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 bookListElement.Add(bookElement);
             }
 
+            var divElement = CreateElement("div", null, null);
+            divElement.SetAttributeValue(XName.Get("id", string.Empty), "GWDANG_HAS_BUILT");
+            bookListElement.Add(divElement);
+
             bodyElement.Add(
                 detailsElement,
                 bookListElement);
+
             document.Root.Add(
                 headElement,
                 bodyElement);
@@ -541,7 +598,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// </summary>
         /// <param name="book">Book.</param>
         /// <returns>Document data.</returns>
-        public static string CreateBookPackagesIndex(Product product, Book book, string locLanguage)
+        public static string CreateBookPackagesIndex(Product product, Book book, string selLoc)
         {
             Contract.Requires(null != product);
             Contract.Requires(null != book);
@@ -560,7 +617,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             metaDateElemet2.SetAttributeValue(
                     XName.Get("content", string.Empty),
                     string.Format(CultureInfo.InvariantCulture, @"http://services.mtps.microsoft.com/ServiceAPI/products/{0}/{1}/books/{2}/{3}",
-                    product.GroupCode, product.Code, book.Code, book.Locale.Code.ToLowerInvariant()));
+                    book.ProductGroupCode, book.ProductCode, book.Code, book.Locale.ToLowerInvariant()));
 
             var linkElement1 = CreateElement("link", null, null);
             linkElement1.SetAttributeValue(XName.Get("type", string.Empty), "text/css");
@@ -579,113 +636,123 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var detailsElement = CreateElement("div", "details", null);
 
             var iconElement = CreateElement("img", "icon", null);
-            iconElement.SetAttributeValue(XName.Get("src", string.Empty), book.IconLink);
-            iconElement.SetAttributeValue(XName.Get("alt", string.Empty), book.IconLinkDescription);
+            iconElement.SetAttributeValue(XName.Get("src", string.Empty), book.IconSrc);
+            iconElement.SetAttributeValue(XName.Get("alt", string.Empty), book.IconAlt);
 
-            //string productGroupsLink = string.Format(CultureInfo.InvariantCulture, @"../../../../../../serviceapi/products/{0}", product.GroupCode);
-            string productGroupsLink = product.GroupCodeLink;
-            var productGroupsLinkElement = CreateElement("a", "product-groups-link", product.GroupCodeDescription);
-            productGroupsLinkElement.SetAttributeValue(XName.Get("href", string.Empty), productGroupsLink);
+            //string productGroupsLink = string.Format(CultureInfo.InvariantCulture, @"../../../../../../serviceapi/products/{0}", product.ProductGroupsName);
+            var productGroupsLinkElement = CreateElement("a", "product-groups-link", product.ProductGroupsDescription);
+            productGroupsLinkElement.SetAttributeValue(XName.Get("href", string.Empty), product.ProductGroupsLink);
 
-            var brandingPackageElement1 = CreateElement("a", "branding-package-link", BRANDING_PACKAGE_NAME1);
+            var brandingPackageElement1 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME1);
             brandingPackageElement1.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", BRANDING_PACKAGE_NAME1));
+                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", Downloader.BRANDING_PACKAGE_NAME1));
 
-            var brandingPackageElement2 = CreateElement("a", "branding-package-link", BRANDING_PACKAGE_NAME2);
+            var brandingPackageElement2 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME2);
             brandingPackageElement2.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", BRANDING_PACKAGE_NAME2));
+                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", Downloader.BRANDING_PACKAGE_NAME2));
 
-            bool includeLocLanguage = false;
+            bool includeSelLoc = false;
             foreach (var bookTemp in product.Books)
             {
-                if (locLanguage.ToLowerInvariant() == Locale.LocaleAll.Code.ToLowerInvariant()
-                    || (locLanguage.ToLowerInvariant() != "en-us"
-                    && bookTemp.Locale.Name.ToLowerInvariant() == locLanguage.ToLowerInvariant()))
+                if (selLoc.ToLowerInvariant() == ItemBase.LocaleAll.ToLowerInvariant()
+                    || (selLoc.ToLowerInvariant() != "en-us"
+                    && bookTemp.Locale.ToLowerInvariant() == selLoc.ToLowerInvariant()))
                 {
-                    includeLocLanguage = true;
+                    includeSelLoc = true;
                     break;
                 }
             }
 
-            var productLinkElement = CreateElement("a", "product-link", book.ProductName);
-            if (!includeLocLanguage)
+            var productLinkElement = CreateElement("a", "product-link", book.ProductDescription);
+            if (!includeSelLoc)
             {
                 productLinkElement.SetAttributeValue(XName.Get("href", string.Empty), CreateItemFileName(product, null));
             }
             else
-                productLinkElement.SetAttributeValue(XName.Get("href", string.Empty), CreateItemFileName(product, locLanguage));
+                productLinkElement.SetAttributeValue(XName.Get("href", string.Empty), CreateItemFileName(product, selLoc));
 
-            var productGroupLinkElement = CreateElement("a", "product-group-link", book.ProductGroupName);
+            var productGroupLinkElement = CreateElement("a", "product-group-link", book.ProductGroupDescription);
 			productGroupLinkElement.SetAttributeValue( XName.Get( "href", string.Empty), /*"HelpContentSetup.msha"*/book.ProductGroupLink);
 
-            XElement bookLastModified;
+            string lastModifiedFmtBook;
             if ((book.LastModified.Millisecond % 10) == 0)
-                bookLastModified = CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ss.ffZ", CultureInfo.InvariantCulture));
+                lastModifiedFmtBook = "yyyy-MM-ddThh:mm:ss.ffZ";
             else
-                bookLastModified = CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ss.fffZ", CultureInfo.InvariantCulture)); 
+                lastModifiedFmtBook = "yyyy-MM-ddThh:mm:ss.fffZ";
+
+            XElement bookLastModified = CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString(lastModifiedFmtBook, CultureInfo.InvariantCulture));
 
             detailsElement.Add(
                     CreateElement("span", "vendor", book.Vendor),
-                    CreateElement("span", "locale", book.Locale.Code),
+                    CreateElement("span", "locale", book.Locale),
                     CreateElement("span", "name", book.Name),
                     CreateElement("span", "description", book.Description),
                     bookLastModified,
                     //CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString("O")),
                     iconElement,
-                    productLinkElement,
+                    //productLinkElement,
                     productGroupLinkElement,
                     brandingPackageElement1,
                     brandingPackageElement2
                     );
 
             var packageListElement = CreateElement("div", "package-list", null);
+            //packageListElement.Add(new XText("The following packages are available: in this book:\r\n"));
             //The following packages are available: in this book:
 
+            (book.Packages as List<Package>).Sort();
             foreach (var package in book.Packages)
             {
                 var packageElement = CreateElement("div", "package", null);
-                var linkElement = CreateElement("a", "current-link", CreatePackageFileName(package));
+                var currentLinkElement = CreateElement("a", "current-link", package.CurrentLinkDescription);
                 
-                linkElement.SetAttributeValue(
+                currentLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    string.Format(CultureInfo.InvariantCulture, @"packages\{0}\{1}", package.Locale.Code.ToLowerInvariant(), CreatePackageFileName(package)));
+                    string.Format(CultureInfo.InvariantCulture, @"packages\{0}\{1}", book.Locale.ToLowerInvariant(), CreatePackageFileName(package)));
 
-                var constituentLinkElement = CreateElement("a", "package-constituent-link", package.Name);
-                constituentLinkElement.SetAttributeValue(XName.Get("href", string.Empty), package.ConstituentLink);
+                var constituentLinkElement = CreateElement("a", "package-constituent-link", package.PackageConstituentLinkDescription);
+                constituentLinkElement.SetAttributeValue(
+                    XName.Get("href", string.Empty),
+                    string.Format(CultureInfo.InvariantCulture, @"packages\{0}\{1}", book.Locale.ToLowerInvariant(), package.Name));
 
-                XElement lastModified;
+                string lastModifiedFmt;
                 if ((package.LastModified.Millisecond % 10) == 0)
-                    lastModified = CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ss.ffZ", CultureInfo.InvariantCulture));
+                    lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.ffZ";
                 else
-                    lastModified = CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString("yyyy-MM-ddThh:mm:ss.fffZ", CultureInfo.InvariantCulture)); 
+                    lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.fffZ";
 
+                XElement lastModified = CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString(lastModifiedFmt, CultureInfo.InvariantCulture));
 
                 packageElement.Add(
                     CreateElement("span", "name", package.Name),
+                    //new XText("Deployed:\r\n"),
                     CreateElement("span", "deployed", package.Deployed),
-                    //Deployed:
                     lastModified,
-                    //CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString("O")),
-                    CreateElement("span", "package-etag", package.Tag),
-                    linkElement,
-                    //CreateElement("span", "package-size-bytes", package.SizeBytes),
-                    //CreateElement("span", "package-size-bytes-uncompressed", package.SizeBytesUncompressed)
-                    //CreateElement("span", "package-constituent-link", package.ConstituentLink )
-                    CreateElement( "span", "package-size-bytes", package.SizeBytes.ToString() ),
-					CreateElement( "span", "package-size-bytes-uncompressed", package.SizeBytesUncompressed.ToString() ),
+                    CreateElement("span", "package-etag", package.PackageEtag),
+                    currentLinkElement,
+                    //CreateElement("span", "package-size-bytes", package.PackageSizeBytes),
+                    //CreateElement("span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed)
+                    //CreateElement("span", "package-constituent-link", package.PackageConstituentLink )
+                    CreateElement( "span", "package-size-bytes", package.PackageSizeBytes.ToString() ),
+					CreateElement( "span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed.ToString() ),
 					//new XText( @"(Package Constituents: " ),
 					constituentLinkElement
+                    //,
 					//new XText( @")" )	
                     );
-
                 packageListElement.Add(packageElement);
             }
 
+            var divElement = CreateElement("div", null, null);
+            divElement.SetAttributeValue(XName.Get("id", string.Empty), "GWDANG_HAS_BUILT");
+
             bodyElement.Add(
                 detailsElement,
-                packageListElement);
+                packageListElement,
+                divElement
+                );
             document.Root.Add(
                 headElement,
                 bodyElement);

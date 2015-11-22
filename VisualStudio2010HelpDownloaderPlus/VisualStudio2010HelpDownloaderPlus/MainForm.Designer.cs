@@ -85,7 +85,6 @@
             // _buttonBrowseDirectory
             // 
             this._buttonBrowseDirectory.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this._buttonBrowseDirectory.Enabled = false;
             this._buttonBrowseDirectory.Image = ((System.Drawing.Image)(resources.GetObject("_buttonBrowseDirectory.Image")));
             this._buttonBrowseDirectory.Location = new System.Drawing.Point(473, 317);
             this._buttonBrowseDirectory.Name = "_buttonBrowseDirectory";
@@ -169,11 +168,11 @@
             this._labelFilter.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._labelFilter.AutoSize = true;
             this._labelFilter.Enabled = false;
-            this._labelFilter.Location = new System.Drawing.Point(154, 354);
+            this._labelFilter.Location = new System.Drawing.Point(145, 354);
             this._labelFilter.Name = "_labelFilter";
-            this._labelFilter.Size = new System.Drawing.Size(84, 15);
+            this._labelFilter.Size = new System.Drawing.Size(101, 15);
             this._labelFilter.TabIndex = 9;
-            this._labelFilter.Text = "Filter on locale";
+            this._labelFilter.Text = "Filter on selLocale";
             // 
             // _comboBoxFilter
             // 

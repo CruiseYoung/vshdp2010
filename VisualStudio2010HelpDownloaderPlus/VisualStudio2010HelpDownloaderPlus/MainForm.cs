@@ -15,9 +15,12 @@ namespace VisualStudio2010HelpDownloaderPlus
     /// </summary>
     internal sealed partial class MainForm : Form
     {
-        private IEnumerable<ProductsGroup> _productsGroups;
-        private Locale locale;
+        private IEnumerable<ProductGroup> _productsGroups;
+        private List<string> _locales;
+        private string selLocale;
         private bool _expanded = true;
+        public static string VsDirName = @"\Visual Studio 2010";
+        public static string OldVsDirName = @"\VisualStudio10";
 
         public MainForm()
         {
@@ -161,28 +164,50 @@ namespace VisualStudio2010HelpDownloaderPlus
             }
             else
             {
-                var tupleTotal = (Tuple<IEnumerable<ProductsGroup>, IList<Locale>>)e.Result;
-               
+                var tupleTotal = (Tuple<ICollection<ProductGroup>, ICollection<string>>)e.Result;
+
                 _productsGroups = tupleTotal.Item1;
 
-                var locales = tupleTotal.Item2;
-                locales.Insert(0, Locale.LocaleAll);
+                _locales = tupleTotal.Item2 as List<string>;
+                (_locales as List<string>).Insert(0, ItemBase.LocaleAll);
 
-                _comboBoxFilter.DataSource = locales;
+                //_comboBoxFilter.DataSource = _locales;
             }
 
-            _buttonDownloadBooks.Enabled = true;
             _labelFilter.Enabled = true;
             _comboBoxFilter.Enabled = true;
+            _buttonDownloadBooks.Enabled = true;
+
             _buttonLoadBooks.Enabled = true;
             _buttonBrowseDirectory.Enabled = true;
             _labelLoadingBooks.Visible = false;
             _progressBarAction.Style = ProgressBarStyle.Continuous;
 
-            if (_comboBoxFilter.Items.Count>0)
+            if ((_locales as List<string>).Count > 0)
             {
-                _comboBoxFilter.SelectedIndex = 3;
-                //_comboBoxFilter.SelectedIndex = 13;
+                int i = 0;
+                int selIndex = 0;
+                //_comboBoxFilter.SelectedIndex = 0;
+                foreach (string locale in _locales)
+                {
+                    if ("en-us" == locale)
+                    {
+                        selIndex = i;
+                        //_comboBoxFilter.SelectedIndex = i;
+                        //break; // DEBUG
+                    }
+
+                    //if ("zh-cn" == locale) // DEBUG
+                    //{
+                    //    selIndex = i;
+                    //    //_comboBoxFilter.SelectedIndex = i;
+                    //    //break;
+                    //}
+                    ++i;
+                }
+
+                _comboBoxFilter.DataSource = _locales;
+                _comboBoxFilter.SelectedIndex = selIndex;
             }
             else
             {
@@ -197,34 +222,53 @@ namespace VisualStudio2010HelpDownloaderPlus
         {
             var products = new List<Product>();
 
-            foreach (TreeNode groupNode in _treeViewBooks.Nodes)
-                foreach (TreeNode productNode in groupNode.Nodes)
+            foreach (TreeNode productGroupNode in _treeViewBooks.Nodes)
+                foreach (TreeNode productNode in productGroupNode.Nodes)
                 {
-                    //var product = (Product)productNode.Tag;
+                    //var product = (Product)productNode.PackageEtag;
                     var books = new List<Book>();
 
                     foreach (TreeNode bookNode in productNode.Nodes)
                         if (bookNode.Checked)
                             books.Add((Book)bookNode.Tag);
 
-                    if (books.Count > 0)
+                    var productSrc = productNode.Tag as Product;
+                    if (books.Count > 0 && productSrc != null)
                     {
-                        var product = new Product();
+                        Product product = null;
+                        //foreach (var p in products)
+                        //{
+                        //    if (p.Code == productSrc.Code)
+                        //    {
+                        //        product = p;
+                        //        break;
+                        //    }
+                        //}
 
-                        product.Locale               = ((Product)productNode.Tag).Locale;
-                        product.Name                 = ((Product)productNode.Tag).Name;
-                        product.Description          = ((Product)productNode.Tag).Description;
-                        product.Code                 = ((Product)productNode.Tag).Code;
-                        product.CodeLink             = ((Product)productNode.Tag).CodeLink;
-                        product.CodeDescription      = ((Product)productNode.Tag).CodeDescription;
-                        product.IconLink             = ((Product)productNode.Tag).IconLink;
-                        product.IconLinkDescription  = ((Product)productNode.Tag).IconLinkDescription;
-                        product.GroupCode            = ((Product)productNode.Tag).GroupCode;
-                        product.GroupCodeLink        = ((Product)productNode.Tag).GroupCodeLink;
-                        product.GroupCodeDescription = ((Product)productNode.Tag).GroupCodeDescription;
-                        product.Books                = books;
+                        //if (product != null)
+                        //{
+                        //    foreach (var b in books)
+                        //        product.Books.Add(b);
+                        //}
+                        //else
+                        //{
+                            product = new Product();
 
-                        products.Add(product);
+                            product.Locale = productSrc.Locale;
+                            product.Name = productSrc.Name;
+                            product.Description = productSrc.Description;
+                            product.IconSrc = productSrc.IconSrc;
+                            product.IconAlt = productSrc.IconAlt;
+                            product.Link = productSrc.Link;
+                            product.Code = productSrc.Code;
+                            product.LinkDescription = productSrc.LinkDescription;
+                            product.ProductGroupCode = productSrc.ProductGroupCode;
+                            product.ProductGroupLink = productSrc.ProductGroupLink;
+                            product.ProductGroupDescription = productSrc.ProductGroupDescription;
+                            product.Books = books;
+
+                            products.Add(product);
+                        //}
                     }
                 }
 
@@ -234,7 +278,7 @@ namespace VisualStudio2010HelpDownloaderPlus
             _labelFilter.Enabled = false;
             _comboBoxFilter.Enabled = false;
 
-            _backgroundWorkerDownloadBooks.RunWorkerAsync(new Tuple<IEnumerable<Product>, string>(products, _textBoxDirectory.Text + "\\VisualStudio10"));
+            _backgroundWorkerDownloadBooks.RunWorkerAsync(new Tuple<IEnumerable<Product>, string>(products, _textBoxDirectory.Text + VsDirName));
         }
 
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
@@ -254,7 +298,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
                 downloader = new Downloader();
                 downloader.ProgressChanged += DownloaderProgressChanged;
-                downloader.DownloadBooks(tuple.Item1, tuple.Item2, locale.Name, (BackgroundWorker)sender);
+                downloader.DownloadBooks(tuple.Item1, tuple.Item2, selLocale, (BackgroundWorker)sender);
 
                 e.Result = 0;
             }
@@ -295,59 +339,93 @@ namespace VisualStudio2010HelpDownloaderPlus
         {
             _buttonDownloadBooks.Enabled = false;
 
-            /*var*/ locale = (Locale)_comboBoxFilter.SelectedItem;
+            var selLoc = _comboBoxFilter.SelectedItem as string;
+            _treeViewBooks.Nodes.Clear();
 
-            foreach (var group in _productsGroups)
+            foreach (var productGroups in _productsGroups)
             {
-                var groupNode = _treeViewBooks.Nodes.Add(group.Name);
+                var productGroupsNode = _treeViewBooks.Nodes.Add(productGroups.Name);
 
-                int countProducts = 0;
-                foreach (var product in group.Products)
+                int countProduct = 0;
+                foreach (var product in productGroups.Products)
                 {
-                    var productNode = groupNode.Nodes.Add(product.Name);
+                    var productNode = productGroupsNode.Nodes.Add(product.Name);
                     productNode.Tag = product;
 
-                    int countBooks = 0;
+                    int countBook = 0;
                     foreach (var book in product.Books)
                     {
-                        if ((locale.Code.ToLowerInvariant() == Locale.LocaleAll.Code.ToLowerInvariant()) ||
-                            (locale.Code.ToLowerInvariant() == book.Locale.Code.ToLowerInvariant())
-                             || ("en-us" == book.Locale.Code.ToLowerInvariant())
-                            )
+                        bool add = true;
+                        if (selLoc.ToLowerInvariant() != ItemBase.LocaleAll.ToLowerInvariant())
                         {
-                            var node = productNode.Nodes.Add(
-                                (book.Locale.Code.ToLowerInvariant() == "en-us") || (locale.Code.ToLowerInvariant() != Locale.LocaleAll.Code.ToLowerInvariant()) ? book.Name : book.ToString());
+                            if ("en-us" != book.Locale.ToLowerInvariant()
+                                && selLoc.ToLowerInvariant() != book.Locale.ToLowerInvariant())
+                            {
+                                add = false;
+                            }
+                        }
+
+                        if (add)
+                        {
+                            var node = productNode.Nodes.Add(book.Name);
                             node.Tag = book;
 
-                            string bookFile = Path.Combine(_textBoxDirectory.Text + "\\VisualStudio10", HelpIndexManager.CreateItemFileName(book, null));
-                            if (File.Exists(bookFile))
+                            bool exists = true;
+                            string bookFile = Path.Combine(_textBoxDirectory.Text + VsDirName, HelpIndexManager.CreateItemFileName(book, null));
+                            if (!File.Exists(bookFile))
+                            {
+                                bookFile = Path.Combine(_textBoxDirectory.Text + OldVsDirName, HelpIndexManager.CreateItemFileName(book, null));
+                                if (!File.Exists(bookFile))
+                                    exists = false;
+                            }
+
+                            if (exists)
                             {
                                 _buttonDownloadBooks.Enabled = true;
 
                                 node.Checked = true;
-                                ++countBooks;
+                                ++countBook;
                             }
                         }
+
+                        //if (selLocale.ToLowerInvariant() == ItemBase.LocaleAll.ToLowerInvariant()
+                        //    || selLocale.ToLowerInvariant() == book.Locale.ToLowerInvariant()
+                        //     || "en-us" == book.Locale.ToLowerInvariant()
+                        //    )
+                        //{
+                        //    var node = productNode.Nodes.Add(
+                        //        (book.Locale.ToLowerInvariant() == "en-us") || (selLocale.ToLowerInvariant() != ItemBase.LocaleAll.ToLowerInvariant()) ? book.Name : book.ToString());
+                        //    node.Tag = book;
+
+                        //    string bookFile = Path.Combine(_textBoxDirectory.Text + "\\VisualStudio10", HelpIndexManager.CreateItemFileName(book, null));
+                        //    if (File.Exists(bookFile))
+                        //    {
+                        //        _buttonDownloadBooks.Enabled = true;
+
+                        //        node.Checked = true;
+                        //        ++countBook;
+                        //    }
+                        //}
                     }
 
-                    if (productNode.Nodes.Count > 0 && productNode.Nodes.Count == countBooks)
+                    if (productNode.Nodes.Count > 0 && productNode.Nodes.Count == countBook)
                     {
                         productNode.Checked = true;
-                        ++countProducts;
+                        ++countProduct;
                     }
 
                     if (productNode.Nodes.Count == 0)
                         productNode.Remove();
                 }
 
-                if (groupNode.Nodes.Count > 0 && groupNode.Nodes.Count == countProducts)
+                if (productGroupsNode.Nodes.Count > 0 && productGroupsNode.Nodes.Count == countProduct)
                 {
-                    groupNode.Checked = true;
-                    ++countProducts;
+                    productGroupsNode.Checked = true;
+                    ++countProduct;
                 }
 
-                if (groupNode.Nodes.Count == 0)
-                    groupNode.Remove();
+                if (productGroupsNode.Nodes.Count == 0)
+                    productGroupsNode.Remove();
             }
 
             if (_expanded)
@@ -368,7 +446,7 @@ namespace VisualStudio2010HelpDownloaderPlus
         {
             base.OnLoad(e);
 
-            _buttonLoadBooks.PerformClick();
+            //_buttonLoadBooks.PerformClick();
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -397,6 +475,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
         private void ComboBoxFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
+            selLocale = _comboBoxFilter.SelectedItem as string;
             _treeViewBooks.Nodes.Clear();
             DisplayBooks();
         }

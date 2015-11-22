@@ -4,10 +4,19 @@ using System.Collections.Generic;
 namespace VisualStudio2010HelpDownloaderPlus.Web
 {
     /// <summary>
-    /// Products group.
+    /// product-group.
     /// </summary>
-    internal sealed class ProductsGroup : ItemBase
+    internal sealed class ProductGroup : ItemBase
     {
+        /// <summary>
+        /// product-groups-link.
+        /// </summary>
+        public string ProductGroupsLink { get; set; }
+        /// <summary>
+        /// Group code Description(for Uri combination).
+        /// </summary>
+        public string ProductGroupsDescription { get; set; }
+
         /// <summary>
         /// Products.
         /// </summary>
@@ -22,15 +31,29 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// <summary>
         /// Group code (for Uri combination).
         /// </summary>
-        public string GroupCode { get; set; }
+        public string ProductGroupCode { get; set; }
         /// <summary>
-        /// Group URL.
+        /// product-group-link.
         /// </summary>
-        public string GroupCodeLink { get; set; }
+        public string ProductGroupLink { get; set; }
         /// <summary>
         /// Group code Description(for Uri combination).
         /// </summary>
-        public string GroupCodeDescription { get; set; }
+        public string ProductGroupDescription { get; set; }
+
+        /// <summary>
+        /// product-groups-link.
+        /// </summary>
+        public string ProductGroupsLink { get; set; }
+        /// <summary>
+        /// Group code Description(for Uri combination).
+        /// </summary>
+        public string ProductGroupsDescription { get; set; }
+        ///// <summary>
+        ///// last-modified.
+        ///// </summary>
+        //public DateTime LastModified { get; set; }
+
         /// <summary>
         /// Books.
         /// </summary>
@@ -43,36 +66,41 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
     internal sealed class Book : ItemBase
     {
         /// <summary>
-        /// Vendor name.
+        /// vendor.
         /// </summary>
         public string Vendor { get; set; }
         /// <summary>
-        /// Last modified time.
+        /// last-modified.
         /// </summary>
         public DateTime LastModified { get; set; }
         /// <summary>
-        /// Packages.
+        /// product-link.
         /// </summary>
-        public ICollection<Package> Packages { get; set; }
-        /// <summary>
-        /// Item description.
-        /// </summary>
-        //public string Description { get; set; }
+        public string ProductCode { get; set; }
         /// <summary>
         /// product-link.
         /// </summary>
         public string ProductLink { get; set; }
         /// <summary>
-        /// product-name.
+        /// product name.
         /// </summary>
-        public string ProductName { get; set; }
+        public string ProductDescription { get; set; }
+        /// <summary>
+        /// product-group-link.
+        /// </summary>
+        public string ProductGroupCode { get; set; }
         /// <summary>
         /// product-group-link.
         /// </summary>
         public string ProductGroupLink { get; set; }
         /// <summary>
-        /// product-group-name.
+        /// product group name.
         /// </summary>
-        public string ProductGroupName { get; set; }
+        public string ProductGroupDescription { get; set; }
+
+        /// <summary>
+        /// Packages.
+        /// </summary>
+        public ICollection<Package> Packages { get; set; }
     }
 }

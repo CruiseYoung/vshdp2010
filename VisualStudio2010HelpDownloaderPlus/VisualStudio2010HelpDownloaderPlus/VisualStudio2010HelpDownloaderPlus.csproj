@@ -64,7 +64,6 @@
     <Compile Include="Web\HelpIndexManager.cs" />
     <Compile Include="Web\ItemBase.cs" />
     <Compile Include="Web\Items.cs" />
-    <Compile Include="Web\Locale.cs" />
     <Compile Include="Web\Package.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
