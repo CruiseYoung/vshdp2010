@@ -536,7 +536,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 CreateElement("span", "locale", product.Locale),
                 CreateElement("span", "name", product.Name),
                 CreateElement("span", "description", product.Description),
-                iconElement,
+                //iconElement,
                 productGroupLinkElement
             );
             var bookListElement = CreateElement("div", "book-list", null);
@@ -646,12 +646,12 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var brandingPackageElement1 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME1);
             brandingPackageElement1.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", Downloader.BRANDING_PACKAGE_NAME1));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BRANDING_PACKAGE_NAME1));
 
             var brandingPackageElement2 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME2);
             brandingPackageElement2.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages\{0}.cab", Downloader.BRANDING_PACKAGE_NAME2));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BRANDING_PACKAGE_NAME2));
 
             bool includeSelLoc = false;
             foreach (var bookTemp in product.Books)
@@ -710,12 +710,12 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 
                 currentLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    string.Format(CultureInfo.InvariantCulture, @"packages\{0}\{1}", book.Locale.ToLowerInvariant(), CreatePackageFileName(package)));
+                    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), CreatePackageFileName(package)));
 
                 var constituentLinkElement = CreateElement("a", "package-constituent-link", package.PackageConstituentLinkDescription);
                 constituentLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    string.Format(CultureInfo.InvariantCulture, @"packages\{0}\{1}", book.Locale.ToLowerInvariant(), package.Name));
+                    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), package.Name));
 
                 string lastModifiedFmt;
                 if ((package.LastModified.Millisecond % 10) == 0)
