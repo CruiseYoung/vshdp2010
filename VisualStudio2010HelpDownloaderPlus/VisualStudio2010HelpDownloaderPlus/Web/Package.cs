@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace VisualStudio2010HelpDownloaderPlus.Web
 {
@@ -69,31 +68,31 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
         public int CompareTo(Package other)
         {
-            int val = 0;
+            int val;
             if (null == other)
             {
                 val = 1;
                 return val;
             }
 
-            int idx_this = Name.LastIndexOf('_');
-            int idx_other = other.Name.LastIndexOf('_');
+            int idxThis = Name.LastIndexOf('_');
+            int idxOther = other.Name.LastIndexOf('_');
 
-            if (idx_this == -1 || idx_other == -1)
-                val = string.Compare(Name, other.Name, true);
+            if (idxThis == -1 || idxOther == -1)
+                val = String.Compare(Name, other.Name, StringComparison.OrdinalIgnoreCase);
                 //val = Name.CompareTo(other.Name);
             else
             {
-                int pkgNo_this = 0;
-                int pkgNo_other = 0;
-                bool result_this = Int32.TryParse(Name.Substring(idx_this + 1), out pkgNo_this);
-                bool result_other = Int32.TryParse(other.Name.Substring(idx_other + 1), out pkgNo_other);
+                int pkgNoThis;
+                int pkgNoOther;
+                bool resultThis = Int32.TryParse(Name.Substring(idxThis + 1), out pkgNoThis);
+                bool resultOther = Int32.TryParse(other.Name.Substring(idxOther + 1), out pkgNoOther);
 
-                if (!result_this || !result_other)
-                    val = string.Compare(Name, other.Name, true);
+                if (!resultThis || !resultOther)
+                    val = String.Compare(Name, other.Name, StringComparison.OrdinalIgnoreCase);
                     //val = Name.CompareTo(other.Name);
-                else if ((val = string.Compare(Name.Substring(0, idx_this), other.Name.Substring(0, idx_other), true)) == 0
-                    && (val = Comparer.Default.Compare(pkgNo_this, pkgNo_other)) == 0)
+                else if ((val = String.Compare(Name.Substring(0, idxThis), other.Name.Substring(0, idxOther), StringComparison.OrdinalIgnoreCase)) == 0
+                    && (val = Comparer.Default.Compare(pkgNoThis, pkgNoOther)) == 0)
                 { }
             }
 

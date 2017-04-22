@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Globalization;
 
 namespace VisualStudio2010HelpDownloaderPlus.Web
 {
@@ -8,15 +7,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
     /// </summary>
     internal abstract class ItemBase : IEquatable<ItemBase>, IComparable<ItemBase>
     {
-        private readonly static string _localeAll = "all" ;
-
         /// <summary>
         /// Locale for all languages.
         /// </summary>
-        public static string LocaleAll
-        {
-            get { return _localeAll; }
-        }
+        public static string LocaleAll { get; } = "all";
 
         public override string ToString()
         {
@@ -26,16 +20,16 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
         public int CompareTo(ItemBase other)
         {
-            int val = 0;
+            int val;
             if (null == other)
             {
                 val = 1;
                 return val;
             }
 
-            if ((val = string.Compare(Name, other.Name, true/*StringComparison.OrdinalIgnoreCase*/)) == 0
-                && (val = string.Compare(Locale, other.Locale, true/*StringComparison.OrdinalIgnoreCase*/)) == 0
-                && (val = string.Compare(Link, other.Link, true/*StringComparison.OrdinalIgnoreCase*/)) == 0)
+            if ((val = String.Compare(Name, other.Name, StringComparison.OrdinalIgnoreCase/*StringComparison.OrdinalIgnoreCase*/)) == 0
+                && (val = String.Compare(Locale, other.Locale, StringComparison.OrdinalIgnoreCase/*StringComparison.OrdinalIgnoreCase*/)) == 0
+                && (val = String.Compare(Link, other.Link, StringComparison.OrdinalIgnoreCase/*StringComparison.OrdinalIgnoreCase*/)) == 0)
             {}
 
             return val;

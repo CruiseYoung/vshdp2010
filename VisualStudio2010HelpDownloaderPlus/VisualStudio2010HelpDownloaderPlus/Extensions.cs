@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace VisualStudio2010HelpDownloaderPlus
 {
@@ -21,11 +22,12 @@ namespace VisualStudio2010HelpDownloaderPlus
         {
             Contract.Requires(null != action);
 
+            var forEach = source as object[] ?? source.Cast<object>().ToArray();
             if (null != action)
-                foreach (T x in source)
+                foreach (T x in forEach)
                     action(x);
 
-            return source;
+            return forEach;
         }
 
         /// <summary>
@@ -39,11 +41,12 @@ namespace VisualStudio2010HelpDownloaderPlus
         {
             Contract.Requires(null != action);
 
+            var forEach = source as T[] ?? source.ToArray();
             if (null != action)
-                foreach (T x in source)
+                foreach (T x in forEach)
                     action(x);
 
-            return source;
+            return forEach;
         }
     }
 }

@@ -17,7 +17,7 @@ namespace VisualStudio2010HelpDownloaderPlus
     {
         private IEnumerable<ProductGroup> _productsGroups;
         private List<string> _locales;
-        private string selLocale;
+        private string _selLocale;
         private bool _expanded = true;
         public static string VsDirName = @"\Visual Studio 2010";
         public static string OldVsDirName = @"\VisualStudio10";
@@ -38,7 +38,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
             _comboBoxFilter.DisplayMember = "NameNormalized";
             _textBoxDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "HelpLibrary");
-            //_textBoxDirectory.Text = Path.Combine(@"F:\Visual Studio\HelpLibrary");
+            _textBoxDirectory.Text = Path.Combine(@"F:\Visual Studio\HelpLibrary");
         }
 
         #region UI methods
@@ -298,7 +298,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
                 downloader = new Downloader();
                 downloader.ProgressChanged += DownloaderProgressChanged;
-                downloader.DownloadBooks(tuple.Item1, tuple.Item2, selLocale, (BackgroundWorker)sender);
+                downloader.DownloadBooks(tuple.Item1, tuple.Item2, _selLocale, (BackgroundWorker)sender);
 
                 e.Result = 0;
             }
@@ -475,7 +475,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
         private void ComboBoxFilter_SelectedIndexChanged(object sender, EventArgs e)
         {
-            selLocale = _comboBoxFilter.SelectedItem as string;
+            _selLocale = _comboBoxFilter.SelectedItem as string;
             _treeViewBooks.Nodes.Clear();
             DisplayBooks();
         }

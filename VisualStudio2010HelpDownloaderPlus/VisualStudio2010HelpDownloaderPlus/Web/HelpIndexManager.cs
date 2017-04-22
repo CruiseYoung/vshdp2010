@@ -24,23 +24,54 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         {
             var attribute = element.Attribute(XName.Get(name, string.Empty));
 
-            return attribute == null ? null : attribute.Value;
+            return attribute?.Value;
         }
 
         private static string GetChildClassValue(this XElement element, string name)
         {
+            /*
             var result = element.Elements()
                 .Where(x => x.GetClassName() == name).Take(1).Single();
 
-            return null != result ? result.Value : null;
+            return result?.Value;
+            */
+            string value = null;
+            try
+            {
+                var result = element.Elements().Where(x => x.GetClassName()?.Equals(name, StringComparison.OrdinalIgnoreCase) ?? false).Take(1).Single();
+                value = result?.Value;
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+
+            return value;
+
         }
 
         private static string GetChildClassAttributeValue(this XElement element, string name, string attribute)
         {
+            /*
             var result = element.Elements()
                 .Where(x => x.GetClassName() == name).Take(1).Single();
 
-            return null != result ? result.GetAttributeValue(attribute) : null;
+            return result?.GetAttributeValue(attribute);
+            */
+
+            string value = null;
+            try
+            {
+                var result = element.Elements().Where(x => x.GetClassName()?.Equals(name, StringComparison.OrdinalIgnoreCase) ?? false).Take(1).Single();
+                value = result?.GetAttributeValue(attribute);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+
+            return value;
+
         }
 
         #endregion
@@ -54,18 +85,16 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
         private static string CreateCodeFromUrl(string url)
         {
-            if (null == url)
-                return null;
+            string[] parts = url?.Split('/');
 
-            string[] parts = url.Split('/');
-
-            return parts.Length > 0 ? parts[parts.Length - 1] : null;
+            return parts?.Length > 0 ? parts[parts.Length - 1] : null;
         }
 
         /// <summary>
         /// Create file name for some items.
         /// </summary>
         /// <param name="item">Item.</param>
+        /// <param name="selLocale"></param>
         /// <returns>File name.</returns>
         public static string CreateItemFileName(ItemBase item, string selLocale)
         {
@@ -74,7 +103,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             if (item is Product)
             {
-                if (null == selLocale)
+                if (string.IsNullOrEmpty(selLocale))
                     return string.Format(CultureInfo.InvariantCulture, "product-{0}.html", item.Code);
                 else
                     return string.Format(CultureInfo.InvariantCulture, "product-{0}({1}).html", item.Code, selLocale);
@@ -100,12 +129,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             if (null == package)
                 return null;
 
-            string fileName = null;
-            if (package.PackageEtag != null)
-                fileName = string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", package.Name, package.PackageEtag);
-            else
-                fileName = string.Format(CultureInfo.InvariantCulture, "{0}.cab", package.Name);
-            return fileName;
+            return package.PackageEtag != null ? string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", package.Name, package.PackageEtag) : string.Format(CultureInfo.InvariantCulture, "{0}.cab", package.Name);
         }
 
         #region Load information methods
@@ -119,85 +143,123 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         {
             Contract.Ensures(null != Contract.Result<ICollection<ProductGroup>>());
 
-            XDocument document = null;
+            XDocument document;
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
-            var query = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product-groups").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "product-group-list").Take(1).Single().Elements()
-                        .Where(x => x.GetClassName() == "product-group");
-
             var result = new List<ProductGroup>();
+            if (document.Root != null)
+            {
+                var query = document.Root.Elements()
+                /*
+                    .Where(x => x.GetClassName() == "product-groups").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "product-group-list").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "product-group");
+                */
+                    .Where(x => x.GetClassName()?.Equals("product-groups", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("product-group-list", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("product-group", StringComparison.OrdinalIgnoreCase) ?? false);
 
-            foreach (var x in query)
-                result.Add(
-                    new ProductGroup()
-                    {
-                        //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
-                        Locale = x.GetChildClassValue("locale"),
-                        Name = x.GetChildClassValue("name"),
-                        Description = x.GetChildClassValue("description"),
-                        //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-						IconSrc = x.GetChildClassAttributeValue("icon", "src"),
-                        IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
-                        Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-group-link", "href")),
-						Link = x.GetChildClassAttributeValue("product-group-link", "href"),
-                        LinkDescription = x.GetChildClassValue("product-group-link")
-                    }
-                );
+                foreach (var x in query)
+                    result.Add(
+                        new ProductGroup()
+                        {
+                            //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                            Locale = x.GetChildClassValue("locale"),
+                            Name = x.GetChildClassValue("name"),
+                            Description = x.GetChildClassValue("description"),
+                            //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+                            IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                            IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
+                            Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-group-link", "href")),
+                            Link = x.GetChildClassAttributeValue("product-group-link", "href"),
+                            LinkDescription = x.GetChildClassValue("product-group-link")
+                        }
+                    );
 
-            //result.Sort();
+                //result.Sort();
+            }
             return result;
         }
 
         /// <summary>
         /// Load products from document.
         /// </summary>
+        /// <param name="productGroup"></param>
         /// <param name="data">Document data.</param>
         /// <returns>List of products.</returns>
         public static ICollection<Product> LoadProducts(ProductGroup productGroup, byte[] data)
         {
             Contract.Ensures(null != Contract.Result<ICollection<Product>>());
 
-            XDocument document = null;
+            XDocument document;
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
 
-            var detailsElement = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
+            if (document.Root != null)
+            {
+                var detailsElement = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
                     .Where(x => x.GetClassName() == "details").Take(1).Single();
+                    */
+                    .Where(x => x.GetClassName()?.Equals("product-group", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("details", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single();
 
-            productGroup.ProductGroupsLink = detailsElement.GetChildClassAttributeValue("product-groups-link", "href");
-            productGroup.ProductGroupsDescription = detailsElement.GetChildClassValue("product-groups-link");
-
-            var query = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "product-list").Take(1).Single().Elements()
-                        .Where(x => x.GetClassName() == "product");
+                productGroup.ProductGroupsLink = detailsElement.GetChildClassAttributeValue("product-groups-link", "href");
+                productGroup.ProductGroupsDescription = detailsElement.GetChildClassValue("product-groups-link");
+            }
 
             var result = new List<Product>();
-
-            //foreach (var x in query)
-            //    result.Add(
-            //        new Product()
-            //        {
-            //            Locale = new Locale() { Code = x.GetChildClassValue("locale") },
-            //            Name = x.GetChildClassValue("name"),
-            //            Description = x.GetChildClassValue("description"),
-            //            IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-            //            IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
-            //            Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-link", "href")),
-            //            LinkDescription = x.GetChildClassValue("product-link")
-            //        }
-            //    );
-
-            foreach (var x in query)
+            if (document.Root != null)
             {
-                var product = new Product()
+                var query = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "product-group").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "product-list").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "product");
+                    */
+                    .Where(x => x.GetClassName()?.Equals("product-group", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("product-list", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("product", StringComparison.OrdinalIgnoreCase) ?? false);
+
+                //foreach (var x in query)
+                //    result.Add(
+                //        new Product()
+                //        {
+                //            Locale = new Locale() { Code = x.GetChildClassValue("locale") },
+                //            Name = x.GetChildClassValue("name"),
+                //            Description = x.GetChildClassValue("description"),
+                //            IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
+                //            IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
+                //            Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-link", "href")),
+                //            LinkDescription = x.GetChildClassValue("product-link")
+                //        }
+                //    );
+
+                foreach (var x in query)
+                {
+                    var product = new Product()
                     {
                         Locale =  x.GetChildClassValue("locale"),
 
@@ -205,9 +267,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                         Name = x.GetChildClassValue("name"),
                         Description = x.GetChildClassValue("description"),
                         //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-						IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                        IconSrc = x.GetChildClassAttributeValue("icon", "src"),
                         IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
-						Link = x.GetChildClassAttributeValue("product-link", "href"),
+                        Link = x.GetChildClassAttributeValue("product-link", "href"),
                         Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("product-link", "href")),
                         LinkDescription = x.GetChildClassValue("product-link"),
 
@@ -216,84 +278,117 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                         ProductGroupsDescription = productGroup.ProductGroupsDescription
                     };
 
-                var bAdd = true;
-                foreach (var productSrc in result)
-                {
-                    if (productSrc.Code == product.Code)
+                    var bAdd = true;
+                    foreach (var productSrc in result)
                     {
-                        bAdd = false;
-                        break;
+                        if (productSrc.Code == product.Code)
+                        {
+                            bAdd = false;
+                            break;
+                        }
                     }
+
+                    //if (product.Name == "Microsoft BizTalk Server 2010"
+                    //    || product.Name == "SharePoint Products and Technologies"
+                    //    || product.Name == "SQL Server Denali"
+                    //    )
+                    //{
+                    //    continue;
+                    //}
+
+                    if (bAdd)
+                        result.Add(product);
                 }
 
-                //if (product.Name == "Microsoft BizTalk Server 2010"
-                //    || product.Name == "SharePoint Products and Technologies"
-                //    || product.Name == "SQL Server Denali"
-                //    )
-                //{
-                //    continue;
-                //}
-
-                if (bAdd)
-                    result.Add(product);
+                //result.Sort();
             }
-
-            //result.Sort();
             return result;
         }
 
         /// <summary>
         /// Load books from document.
         /// </summary>
+        /// <param name="product"></param>
         /// <param name="data">Document data.</param>
         /// <returns>List of books.</returns>
         public static Tuple<ICollection<Book>, ICollection<string>> LoadBooks(Product product, byte[] data)
         {
             Contract.Ensures(null != Contract.Result<Tuple<ICollection<Book>, ICollection<string>>>());
 
-            XDocument document = null;
+            XDocument document;
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
-            var detailsElement = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "details").Take(1).Single();
-
-            product.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
-            product.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
-
-
-            string currentLink = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "book-list").Take(1).Single().GetChildClassAttributeValue("book-list-link", "href");
-
             var result = new List<Book>();
             var locales = new List<string>();
-
-            if (null != currentLink)
+            if (document.Root != null)
             {
-                var query = document.Root.Elements()
-                .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "book-list").Take(1).Single().Elements()
-                        .Where(x => x.GetClassName() == "book");
+                var detailsElement = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "details").Take(1).Single();
+                    */
+                    .Where(x => x.GetClassName()?.Equals("product", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("details", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single();
 
-                foreach (var x in query)
+                product.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
+                product.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
+
+                string currentLink = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "book-list").Take(1).Single().GetChildClassAttributeValue("book-list-link", "href");
+                    */
+                    .Where(x => x.GetClassName()?.Equals("product", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("book-list", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .GetChildClassAttributeValue("book-list-link", "href");
+
+
+                if (!string.IsNullOrEmpty(currentLink))
                 {
-                    string code = x.GetChildClassAttributeValue("book-link", "href").Replace(currentLink, null).TrimStart('/');
-                    if (code.Contains('/'))
-                        code = code.Substring(0, code.IndexOf('/'));
+                    var query = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "book-list").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "book");
+                    */
+                    .Where(x => x.GetClassName()?.Equals("product", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("book-list", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("book", StringComparison.OrdinalIgnoreCase) ?? false);
 
-                    var book = new Book()
+                    foreach (var x in query)
+                    {
+                        string code = x.GetChildClassAttributeValue("book-link", "href").Replace(currentLink, null).TrimStart('/');
+                        if (code.Contains('/'))
+                            code = code.Substring(0, code.IndexOf('/'));
+
+                        var book = new Book()
                         {
                             Name = x.GetChildClassValue("name"),
                             Locale = x.GetChildClassValue("locale"),
                             //Locale = new Locale() { Code = x.GetChildClassValue("locale") },
                             Description = x.GetChildClassValue("description"),
                             //IconSrc = CreateCodeFromUrl(x.GetChildClassAttributeValue("icon", "src")),
-							IconSrc = x.GetChildClassAttributeValue("icon", "src"),
+                            IconSrc = x.GetChildClassAttributeValue("icon", "src"),
                             IconAlt = x.GetChildClassAttributeValue("icon", "alt"),
-							Link = x.GetChildClassAttributeValue("book-link", "href"),
+                            Link = x.GetChildClassAttributeValue("book-link", "href"),
                             //Code = CreateCodeFromUrl(x.GetChildClassAttributeValue("book-link", "href")),
                             Code = code,
                             LinkDescription = x.GetChildClassValue("book-link"),
@@ -302,15 +397,17 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                             ProductGroupCode = product.ProductGroupCode
                         };
                     
-                    result.Add(book);
+                        result.Add(book);
 
-                    if (!locales.Contains(book.Locale))
-                        locales.Add(book.Locale);
+                        if (!locales.Contains(book.Locale))
+                            locales.Add(book.Locale);
+                    }
                 }
+
+                //result.Sort();
+                //locales.Sort();
             }
 
-            //result.Sort();
-            //locales.Sort();
             return new Tuple<ICollection<Book>, ICollection<string>>(result, locales);
         }
         
@@ -325,54 +422,76 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             Contract.Requires(null != book);
             Contract.Ensures(null != Contract.Result<ICollection<Package>>());
 
-            XDocument document = null;
+            XDocument document;
 
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
-            var detailsElement = document.Root.Elements()
-                .Where(x => x.GetClassName() == "book").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "details").Take(1).Single();
-
-            book.Vendor = detailsElement.GetChildClassValue("vendor");
-            //book.Locale = detailsElement.GetChildClassValue("locale");
-            //book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
-            //book.Name = detailsElement.GetChildClassValue("name");
-            //book.Description = detailsElement.GetChildClassValue("description");
-            book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"));
-            book.ProductLink = detailsElement.GetChildClassAttributeValue("product-link", "href");
-            book.ProductDescription = detailsElement.GetChildClassValue("product-link");
-            book.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
-            book.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
-            
-            var query = document.Root.Elements()
-                .Where(x => x.GetClassName() == "book").Take(1).Single().Elements()
-                    .Where(x => x.GetClassName() == "package-list").Take(1).Single().Elements()
-                        .Where(x => x.GetClassName() == "package");
-
             var result = new List<Package>();
-
-            foreach (var x in query)
+            if (document.Root != null)
             {
-                result.Add(
-                    new Package()
-                    {
-                        Name = x.GetChildClassValue("name"),
-                        Deployed = x.GetChildClassValue("deployed"),
-                        LastModified = DateTime.Parse(x.GetChildClassValue("last-modified")),
-                        PackageEtag = x.GetChildClassValue("package-etag"),
-                        CurrentLink = x.GetChildClassAttributeValue("current-link", "href"),
-                        CurrentLinkDescription = x.GetChildClassValue("current-link"),
-                        PackageSizeBytes = long.Parse(x.GetChildClassValue("package-size-bytes"), CultureInfo.InvariantCulture),
-                        PackageSizeBytesUncompressed = long.Parse(x.GetChildClassValue("package-size-bytes-uncompressed"), CultureInfo.InvariantCulture),
-                        PackageConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
-                        PackageConstituentLinkDescription = x.GetChildClassValue("package-constituent-link"),
-                        Locale = book.Locale // Locale = detailsElement.GetChildClassValue("locale") 
-                    }
-                );
-            }
+                var detailsElement = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "book").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "details").Take(1).Single();
+                    */
+                    .Where(x => x.GetClassName()?.Equals("book", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("details", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single();
 
-            //result.Sort();
+                book.Vendor = detailsElement.GetChildClassValue("vendor");
+                //book.Locale = detailsElement.GetChildClassValue("locale");
+                //book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
+                //book.Name = detailsElement.GetChildClassValue("name");
+                //book.Description = detailsElement.GetChildClassValue("description");
+                book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"));
+                book.ProductLink = detailsElement.GetChildClassAttributeValue("product-link", "href");
+                book.ProductDescription = detailsElement.GetChildClassValue("product-link");
+                book.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
+                book.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
+
+                var query = document.Root.Elements()
+                    /*
+                    .Where(x => x.GetClassName() == "book").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "package-list").Take(1).Single().Elements()
+                    .Where(x => x.GetClassName() == "package");
+                    */
+                    .Where(x => x.GetClassName()?.Equals("book", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("package-list", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single()
+                    .Elements()
+                    .Where(x => x.GetClassName()?.Equals("package", StringComparison.OrdinalIgnoreCase) ?? false);
+
+                foreach (var x in query)
+                {
+                    result.Add(
+                        new Package()
+                        {
+                            Name = x.GetChildClassValue("name"),
+                            Deployed = x.GetChildClassValue("deployed"),
+                            LastModified = DateTime.Parse(x.GetChildClassValue("last-modified")),
+                            PackageEtag = x.GetChildClassValue("package-etag"),
+                            CurrentLink = x.GetChildClassAttributeValue("current-link", "href"),
+                            CurrentLinkDescription = x.GetChildClassValue("current-link"),
+                            PackageSizeBytes = long.Parse(x.GetChildClassValue("package-size-bytes"), CultureInfo.InvariantCulture),
+                            PackageSizeBytesUncompressed = long.Parse(x.GetChildClassValue("package-size-bytes-uncompressed"), CultureInfo.InvariantCulture),
+                            PackageConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
+                            PackageConstituentLinkDescription = x.GetChildClassValue("package-constituent-link"),
+                            Locale = book.Locale // Locale = detailsElement.GetChildClassValue("locale") 
+                        }
+                    );
+                }
+
+                //result.Sort();
+            }
             return result;
         }
 
@@ -384,9 +503,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         {
             var element = new XElement(XName.Get(name, "http://www.w3.org/1999/xhtml"));
             
-            if (null != className)
+            if (!string.IsNullOrEmpty(className))
                 element.SetAttributeValue(XName.Get("class", string.Empty), className);
-            if (null != value)
+            if (!string.IsNullOrEmpty(value))
                 element.Value = value;
 
             return element;
@@ -396,6 +515,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// Creates main help setup index.
         /// </summary>
         /// <param name="products">Products list.</param>
+        /// <param name="selLoc"></param>
         /// <returns>Document data.</returns>
         public static string CreateSetupIndex(IEnumerable<Product> products, string selLoc)
         {
@@ -411,7 +531,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             iconElement.SetAttributeValue(XName.Get("src", string.Empty), "../../../serviceapi/content/image/ic298417");
             iconElement.SetAttributeValue(XName.Get("alt", string.Empty), "VS 100 Icon");
 
-            (products as List<Product>).Sort();
+            var list = products as List<Product>;
+            list?.Sort();
             foreach (var product in products)
             {
                 var productElement = CreateElement("div", "product", null);
@@ -438,15 +559,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 }
 
                 var productLinkElement = CreateElement("a", "product-link", product.LinkDescription);
-                if (!includeSelLoc)
-                    productLinkElement.SetAttributeValue(
+                productLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    CreateItemFileName(product, null));
-                else
-                    productLinkElement.SetAttributeValue(
-                    XName.Get("href", string.Empty),
-                    CreateItemFileName(product, selLoc));
-                
+                    !includeSelLoc ? CreateItemFileName(product, null) : CreateItemFileName(product, selLoc));
+
                 productElement.Add(
                     CreateElement("span", "locale", product.Locale),
                     CreateElement("span", "name", product.Name),
@@ -461,7 +577,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             divElement.SetAttributeValue(XName.Get("id", string.Empty), "GWDANG_HAS_BUILT");
             bodyElement.Add(divElement);
 
-            document.Root.Add(bodyElement);
+            document.Root?.Add(bodyElement);
 
             return document.ToStringWithDeclaration();
         }
@@ -470,6 +586,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// Create product books index.
         /// </summary>
         /// <param name="product">Product.</param>
+        /// <param name="locLanguage"></param>
+        /// <param name="lastModified"></param>
         /// <returns>Document data.</returns>
         public static string CreateProductBooksIndex(Product product, string locLanguage, DateTime lastModified)
         {
@@ -491,11 +609,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     string.Format(CultureInfo.InvariantCulture, @"http://services.mtps.microsoft.com/ServiceAPI/products/{0}/{1}",
                     product.ProductGroupCode, product.Code));
 
-            string lastModifiedFmt;
-            if ((lastModified.Millisecond % 10) == 0)
-                lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.ffZ";
-            else
-                lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.fffZ";
+            var lastModifiedFmt = (lastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
             string lastModifiedStr = lastModified.ToUniversalTime()
                 .ToString(lastModifiedFmt, CultureInfo.InvariantCulture);
 
@@ -554,7 +668,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     product.Link));
             bookListElement.Add(bookListLinkElement);
 
-            (product.Books as List<Book>).Sort();
+            var books = product.Books as List<Book>;
+            books?.Sort();
             foreach (var book in product.Books)
             {
                 var bookElement = CreateElement("div", "book", null);
@@ -586,7 +701,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 detailsElement,
                 bookListElement);
 
-            document.Root.Add(
+            document.Root?.Add(
                 headElement,
                 bodyElement);
 
@@ -596,7 +711,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
         /// <summary>
         /// Create book packages index.
         /// </summary>
+        /// <param name="product"></param>
         /// <param name="book">Book.</param>
+        /// <param name="selLoc"></param>
         /// <returns>Document data.</returns>
         public static string CreateBookPackagesIndex(Product product, Book book, string selLoc)
         {
@@ -643,15 +760,15 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var productGroupsLinkElement = CreateElement("a", "product-groups-link", product.ProductGroupsDescription);
             productGroupsLinkElement.SetAttributeValue(XName.Get("href", string.Empty), product.ProductGroupsLink);
 
-            var brandingPackageElement1 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME1);
+            var brandingPackageElement1 = CreateElement("a", "branding-package-link", Downloader.BrandingPackageName1);
             brandingPackageElement1.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BRANDING_PACKAGE_NAME1));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BrandingPackageName1));
 
-            var brandingPackageElement2 = CreateElement("a", "branding-package-link", Downloader.BRANDING_PACKAGE_NAME2);
+            var brandingPackageElement2 = CreateElement("a", "branding-package-link", Downloader.BrandingPackageName2);
             brandingPackageElement2.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BRANDING_PACKAGE_NAME2));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BrandingPackageName2));
 
             bool includeSelLoc = false;
             foreach (var bookTemp in product.Books)
@@ -666,21 +783,13 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             }
 
             var productLinkElement = CreateElement("a", "product-link", book.ProductDescription);
-            if (!includeSelLoc)
-            {
-                productLinkElement.SetAttributeValue(XName.Get("href", string.Empty), CreateItemFileName(product, null));
-            }
-            else
-                productLinkElement.SetAttributeValue(XName.Get("href", string.Empty), CreateItemFileName(product, selLoc));
+            productLinkElement.SetAttributeValue(XName.Get("href", string.Empty),
+                !includeSelLoc ? CreateItemFileName(product, null) : CreateItemFileName(product, selLoc));
 
             var productGroupLinkElement = CreateElement("a", "product-group-link", book.ProductGroupDescription);
-			productGroupLinkElement.SetAttributeValue( XName.Get( "href", string.Empty), /*"HelpContentSetup.msha"*/book.ProductGroupLink);
+            productGroupLinkElement.SetAttributeValue( XName.Get( "href", string.Empty), /*"HelpContentSetup.msha"*/book.ProductGroupLink);
 
-            string lastModifiedFmtBook;
-            if ((book.LastModified.Millisecond % 10) == 0)
-                lastModifiedFmtBook = "yyyy-MM-ddThh:mm:ss.ffZ";
-            else
-                lastModifiedFmtBook = "yyyy-MM-ddThh:mm:ss.fffZ";
+            var lastModifiedFmtBook = (book.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
 
             XElement bookLastModified = CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString(lastModifiedFmtBook, CultureInfo.InvariantCulture));
 
@@ -702,7 +811,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             //packageListElement.Add(new XText("The following packages are available: in this book:\r\n"));
             //The following packages are available: in this book:
 
-            (book.Packages as List<Package>).Sort();
+            var packages = book.Packages as List<Package>;
+            packages?.Sort();
             foreach (var package in book.Packages)
             {
                 var packageElement = CreateElement("div", "package", null);
@@ -717,11 +827,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     XName.Get("href", string.Empty),
                     string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), package.Name));
 
-                string lastModifiedFmt;
-                if ((package.LastModified.Millisecond % 10) == 0)
-                    lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.ffZ";
-                else
-                    lastModifiedFmt = "yyyy-MM-ddThh:mm:ss.fffZ";
+                var lastModifiedFmt = (package.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
 
                 XElement lastModified = CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString(lastModifiedFmt, CultureInfo.InvariantCulture));
 
@@ -736,11 +842,11 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     //CreateElement("span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed)
                     //CreateElement("span", "package-constituent-link", package.PackageConstituentLink )
                     CreateElement( "span", "package-size-bytes", package.PackageSizeBytes.ToString() ),
-					CreateElement( "span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed.ToString() ),
-					//new XText( @"(Package Constituents: " ),
-					constituentLinkElement
+                    CreateElement( "span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed.ToString() ),
+                    //new XText( @"(Package Constituents: " ),
+                    constituentLinkElement
                     //,
-					//new XText( @")" )	
+                    //new XText( @")" )
                     );
                 packageListElement.Add(packageElement);
             }
@@ -753,7 +859,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 packageListElement,
                 divElement
                 );
-            document.Root.Add(
+            document.Root?.Add(
                 headElement,
                 bodyElement);
 

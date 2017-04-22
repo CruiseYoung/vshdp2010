@@ -8,6 +8,6 @@ namespace VisualStudio2010HelpDownloaderPlus
     internal static class NativeMethods
     {
         [DllImport("UxTheme", CharSet = CharSet.Unicode)]
-        public static extern int SetWindowTheme(HandleRef handle, string subApplicationName, string subIDList);
+        public static extern int SetWindowTheme(HandleRef handle, string subApplicationName, string subIdList);
     }
 }
