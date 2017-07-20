@@ -35,6 +35,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
         public Downloader()
         {
+            _client.Encoding = Encoding.UTF8;
             _client.BaseAddress = @"http://services.mtps.microsoft.com/serviceapi/products/";
 
             string settingsFile = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath),
@@ -155,8 +156,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             _packagesCountCurrent = 0;
 
             var lastModifiedTime = new DateTime(2000, 1, 1, 0, 0, 0);
-            var packages = new List<Package>();
-
+            //var packages = new List<Package>();
+            var packages = new Dictionary<string, Package>();
+            
             // Add branding packages
             var brandingPackgeName1 = new Package
             {
@@ -172,7 +174,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             brandingPackgeName1.LastModified = FetchLastModified(brandingPackgeName1.CurrentLink);
             brandingPackgeName1.PackageSizeBytes = FetchContentLength(brandingPackgeName1.CurrentLink);
             brandingPackgeName1.PackageSizeBytesUncompressed = brandingPackgeName1.PackageSizeBytes;
-            packages.Add(brandingPackgeName1);
+            packages.Add(brandingPackgeName1.Name, brandingPackgeName1);
             if (brandingPackgeName1.LastModified > lastModifiedTime)
                 lastModifiedTime = brandingPackgeName1.LastModified;
 
@@ -190,7 +192,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             brandingPackgeName2.LastModified = FetchLastModified(brandingPackgeName2.CurrentLink);
             brandingPackgeName2.PackageSizeBytes = FetchContentLength(brandingPackgeName2.CurrentLink);
             brandingPackgeName2.PackageSizeBytesUncompressed = brandingPackgeName2.PackageSizeBytes;
-            packages.Add(brandingPackgeName2);
+            packages.Add(brandingPackgeName2.Name, brandingPackgeName2);
             if (brandingPackgeName2.LastModified > lastModifiedTime)
                 lastModifiedTime = brandingPackgeName2.LastModified;
 
@@ -225,14 +227,23 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                         }
 
                         foreach (var package in book.Packages)
+                        {
+                            string name = package.Name.ToLowerInvariant();
+                            if (!packages.ContainsKey(name))
+                            {
+                                packages.Add(name, package);
+                            }
+                            /*
                             //if ((package.Name != HelpIndexManager.BRANDING_PACKAGE_NAME1) &&
                             //    (package.Name != HelpIndexManager.BRANDING_PACKAGE_NAME2))
                             if (!packages.Contains(package))
                             {
                                 packages.Add(package);
-                                if (package.LastModified > lastModifiedTime)
-                                    lastModifiedTime = package.LastModified;
                             }
+                            */
+                            if (package.LastModified > lastModifiedTime)
+                                lastModifiedTime = package.LastModified;
+                        }
 
                         if (worker.CancellationPending)
                             return;
@@ -276,9 +287,15 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 //IEnumerable<Package> query = packages.OrderBy(package => package.CurrentLink);
                 //foreach (Package package in query)
                 //    writer.WriteLine(package.CurrentLink);
+                var query = packages.Values.ToList();
+                query.Sort();
+                foreach (Package package in query)
+                    writer.WriteLine(package.CurrentLink);
+                /*
                 packages.Sort();
                 foreach (Package package in packages)
                     writer.WriteLine(package.CurrentLink);
+                */
                 writer.Close();
 
                 FileLastModifiedTime(listFilePath, lastModifiedTime);
@@ -387,18 +404,47 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             }
 
             // Downloading packages
-            foreach (var package in packages)
+            foreach (Package package in packages.Values)
+            //foreach (var package in packages)
             {
                 string targetFileName = Path.Combine(targetDirectory, HelpIndexManager.CreatePackageFileName(package));
                 if ((package.Name.ToLowerInvariant() != BrandingPackageName1.ToLowerInvariant())
                     && (package.Name.ToLowerInvariant() != BrandingPackageName2.ToLowerInvariant()))
                     targetFileName = Path.Combine(targetDirectory, package.Locale.ToLowerInvariant(), HelpIndexManager.CreatePackageFileName(package));
 
-                bool download = true;
+                bool download = false;
                     
                 // If file exist and file length is the same, skip it
                 if (File.Exists(targetFileName))
-                    download = FetchContentLength(package.CurrentLink) != new FileInfo(targetFileName).Length;
+                {
+                    FileInfo curFileInfo = new FileInfo(targetFileName);
+                    if (package.LastModified != curFileInfo.LastWriteTime)
+                    {
+                        package.LastModified = FetchLastModified(package.CurrentLink);
+                    }
+                    //if (package.LastModified != curFileInfo.LastWriteTime)
+                    //{
+                    //    download = true;
+                    //    File.Delete(targetFileName);
+                    //}
+
+                    if (package.PackageSizeBytes != curFileInfo.Length)
+                    {
+                        package.PackageSizeBytes = FetchContentLength(package.CurrentLink);
+                    }
+                    if (package.PackageSizeBytes != curFileInfo.Length)
+                    {
+                        download = true;
+                        File.Delete(targetFileName);
+                    }
+
+                    //download = FetchContentLength(package.CurrentLink) != curFileInfo.Length;
+                }
+                else
+                {
+                    download = true;
+                    package.LastModified = FetchLastModified(package.CurrentLink);
+                }
 
                 if (download)
                     _client.DownloadFile(package.CurrentLink, targetFileName);
@@ -414,14 +460,14 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             foreach (var loc in locales)
             {
                 string targetDirectoryLoc = Path.Combine(targetDirectory, loc.ToLowerInvariant());
-                FileLastModifiedTime(targetDirectoryLoc, localeModifieds[loc.ToLowerInvariant()], true);                
+                FileLastModifiedTime(targetDirectoryLoc, localeModifieds[loc.ToLowerInvariant()], true);
             }
             FileLastModifiedTime(targetDirectory, lastModifiedTime, true);
             FileLastModifiedTime(directory, lastModifiedTime, true);
             FileLastModifiedTime(helpLibDir, lastModifiedTime, true);
         }
 
-        private void CleanupOldPackages(List<Package> packages, string cachePath, string cabDirectory, bool bDestDirectory, bool bCleanOtherCab)
+        private void CleanupOldPackages(/*List<Package> packages*/Dictionary<string, Package> packages, string cachePath, string cabDirectory, bool bDestDirectory, bool bCleanOtherCab)
         {
             if (!Directory.Exists(cabDirectory))
                 return;
@@ -432,7 +478,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 string fileName = Path.GetFileName(file);
                 bool actual = false;
 
-                foreach (var package in packages)
+                foreach (Package package in packages.Values)
+                //foreach (var package in packages)
                 {
                     if (String.Compare(fileName, HelpIndexManager.CreatePackageFileName(package), StringComparison.OrdinalIgnoreCase) == 0)
                     {
@@ -471,8 +518,13 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
                         break;
                     }
-                    else if (fileName != null && (fileName.ToLowerInvariant().Contains(package.Name.ToLowerInvariant() + @"(")
-                                                  || fileName.ToLowerInvariant().Contains(package.Name.ToLowerInvariant() + @".")))
+
+                    //Compare(String strA, int indexA, String strB, int indexB, int length, bool ignoreCase);
+                    else if (fileName != null && (string.Compare(fileName, 0, package.Name.ToLowerInvariant() + @"(", 0, package.Name.Length + 1, true) == 0
+                        || string.Compare(fileName, 0, package.Name.ToLowerInvariant() + @".", 0, package.Name.Length + 1, true) == 0))
+                        
+                        //(fileName.ToLowerInvariant().Contains(package.Name.ToLowerInvariant() + @"(")
+                        //                          || fileName.ToLowerInvariant().Contains(package.Name.ToLowerInvariant() + @".")))
                     {
                         //actual = false;
                         File.Delete(file);
@@ -490,15 +542,23 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             if (string.IsNullOrWhiteSpace(url))
                 return 0;
 
-            var request = (HttpWebRequest)WebRequest.Create(url);
+            long result = 0;
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
 
-            if (null != _proxy)
-                request.Proxy = _proxy;
+                if (null != _proxy)
+                    request.Proxy = _proxy;
 
-            var response = (HttpWebResponse)request.GetResponse();
+                var response = (HttpWebResponse)request.GetResponse();
             
-            var result = response.ContentLength;
-            response.Close();
+                result = response.ContentLength;
+                response.Close();
+            }
+            catch (Exception e)
+            {
+                Program.LogException(e);
+            }
 
             return result;
         }
@@ -534,19 +594,26 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             if (string.IsNullOrWhiteSpace(url))
                 return DateTime.Now;
 
-            var request = (HttpWebRequest)WebRequest.Create(url);
+            var result = DateTime.Now;
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
 
-            if (null != _proxy)
-                request.Proxy = _proxy;
+                if (null != _proxy)
+                    request.Proxy = _proxy;
 
-            var response = (HttpWebResponse)request.GetResponse();
+                var response = (HttpWebResponse)request.GetResponse();
 
-            var result = response.LastModified;
-            response.Close();
+                result = response.LastModified;
+                response.Close();
+            }
+            catch (Exception e)
+            {
+                Program.LogException(e);
+            }
 
             return result;
         }
-        
         private void OnChangeProgress(int progressPercentage)
         {
             Contract.Requires(progressPercentage >= 0);

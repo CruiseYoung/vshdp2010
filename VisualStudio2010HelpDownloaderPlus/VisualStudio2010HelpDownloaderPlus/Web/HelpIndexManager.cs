@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Linq;
 using System.Xml.Linq;
+
 
 namespace VisualStudio2010HelpDownloaderPlus.Web
 {
@@ -145,6 +147,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             XDocument document;
 
+            //string str_tmp = Encoding.UTF8.GetString(data).Trim();
+            //data = Encoding.UTF8.GetBytes(str_tmp);
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
@@ -201,6 +205,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             XDocument document;
 
+            //string str_tmp = Encoding.UTF8.GetString(data).Trim();
+            //data = Encoding.UTF8.GetBytes(str_tmp);
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
@@ -317,6 +323,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             XDocument document;
 
+            //string str_tmp = Encoding.UTF8.GetString(data).Trim();
+            //data = Encoding.UTF8.GetBytes(str_tmp);
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
@@ -337,10 +345,19 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     .Take(1)
                     .Single();
 
-                product.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
-                product.ProductGroupDescription = detailsElement.GetChildClassValue("product-group-link");
+                product.ProductGroupsLink = detailsElement.GetChildClassAttributeValue("product-groups-link", "href");
+                product.ProductGroupsDescription = detailsElement.GetChildClassValue("product-groups-link");
 
-                string currentLink = document.Root.Elements()
+                var productElement = document.Root.Elements()
+                    .Where(x => x.GetClassName()?.Equals("product", StringComparison.OrdinalIgnoreCase) ?? false)
+                    .Take(1)
+                    .Single();
+
+                product.ProductGroupLink = productElement.GetChildClassAttributeValue("product-group-link", "href");
+                product.ProductGroupDescription = productElement.GetChildClassValue("product-group-link");
+
+                //string currentLink = document.Root.Elements()
+                var booklistElement = document.Root.Elements()
                     /*
                     .Where(x => x.GetClassName() == "product").Take(1).Single().Elements()
                     .Where(x => x.GetClassName() == "book-list").Take(1).Single().GetChildClassAttributeValue("book-list-link", "href");
@@ -351,11 +368,12 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     .Elements()
                     .Where(x => x.GetClassName()?.Equals("book-list", StringComparison.OrdinalIgnoreCase) ?? false)
                     .Take(1)
-                    .Single()
-                    .GetChildClassAttributeValue("book-list-link", "href");
+                    .Single();
+                    //.GetChildClassAttributeValue("book-list-link", "href");
 
 
-                if (!string.IsNullOrEmpty(currentLink))
+                //if (!string.IsNullOrEmpty(currentLink))
+                if (booklistElement != null)
                 {
                     var query = document.Root.Elements()
                     /*
@@ -375,7 +393,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
                     foreach (var x in query)
                     {
-                        string code = x.GetChildClassAttributeValue("book-link", "href").Replace(currentLink, null).TrimStart('/');
+                        string code = x.GetChildClassAttributeValue("book-link", "href").Replace(product.ProductGroupLink, null).TrimStart('/');
                         if (code.Contains('/'))
                             code = code.Substring(0, code.IndexOf('/'));
 
@@ -424,6 +442,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             XDocument document;
 
+            //string str_tmp = Encoding.UTF8.GetString(data).Trim();
+            //data = Encoding.UTF8.GetBytes(str_tmp);
             using (var stream = new MemoryStream(data))
                 document = XDocument.Load(stream);
 
@@ -445,7 +465,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
                 book.Vendor = detailsElement.GetChildClassValue("vendor");
                 //book.Locale = detailsElement.GetChildClassValue("locale");
-                //book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
+                ////book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
                 //book.Name = detailsElement.GetChildClassValue("name");
                 //book.Description = detailsElement.GetChildClassValue("description");
                 book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"));
@@ -483,8 +503,8 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                             CurrentLinkDescription = x.GetChildClassValue("current-link"),
                             PackageSizeBytes = long.Parse(x.GetChildClassValue("package-size-bytes"), CultureInfo.InvariantCulture),
                             PackageSizeBytesUncompressed = long.Parse(x.GetChildClassValue("package-size-bytes-uncompressed"), CultureInfo.InvariantCulture),
-                            PackageConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
-                            PackageConstituentLinkDescription = x.GetChildClassValue("package-constituent-link"),
+                            //PackageConstituentLink = x.GetChildClassAttributeValue("package-constituent-link", "href"),
+                            //PackageConstituentLinkDescription = x.GetChildClassValue("package-constituent-link"),
                             Locale = book.Locale // Locale = detailsElement.GetChildClassValue("locale") 
                         }
                     );
@@ -643,6 +663,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var productGroupLinkElement = CreateElement("a", "product-group-link", product.ProductGroupDescription);
             productGroupLinkElement.SetAttributeValue(XName.Get("href", string.Empty), product.ProductGroupLink);
 
+            var productGroupsLinkElement = CreateElement("a", "product-groups-link", product.ProductGroupsDescription);
+            productGroupsLinkElement.SetAttributeValue(XName.Get("href", string.Empty), product.ProductGroupsLink);
+
+
             var bodyElement = CreateElement("body", "product", null);
             var detailsElement = CreateElement("div", "details", null);
             detailsElement.Add(
@@ -651,11 +675,13 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 CreateElement("span", "name", product.Name),
                 CreateElement("span", "description", product.Description),
                 iconElement,
-                productGroupLinkElement
+                productGroupsLinkElement
+                //productGroupLinkElement
             );
             var bookListElement = CreateElement("div", "book-list", null);
             //bookListElement.Add(new XText("This Product contains the following:\r\n"));
             //This Product contains the following:\r\n 
+            /*
             var bookListLinkElement = CreateElement("a", "book-list-link", "Books:");
 
             //bookListLinkElement.SetAttributeValue(
@@ -667,6 +693,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 string.Format(CultureInfo.InvariantCulture, @"{0}/books",
                     product.Link));
             bookListElement.Add(bookListLinkElement);
+            */
 
             var books = product.Books as List<Book>;
             books?.Sort();
@@ -699,6 +726,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             bodyElement.Add(
                 detailsElement,
+                productGroupLinkElement,
                 bookListElement);
 
             document.Root?.Add(
@@ -822,10 +850,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     XName.Get("href", string.Empty),
                     string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), CreatePackageFileName(package)));
 
-                var constituentLinkElement = CreateElement("a", "package-constituent-link", package.PackageConstituentLinkDescription);
-                constituentLinkElement.SetAttributeValue(
-                    XName.Get("href", string.Empty),
-                    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), package.Name));
+                //var constituentLinkElement = CreateElement("a", "package-constituent-link", package.PackageConstituentLinkDescription);
+                //constituentLinkElement.SetAttributeValue(
+                //    XName.Get("href", string.Empty),
+                //    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), package.Name));
 
                 var lastModifiedFmt = (package.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
 
@@ -842,9 +870,9 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     //CreateElement("span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed)
                     //CreateElement("span", "package-constituent-link", package.PackageConstituentLink )
                     CreateElement( "span", "package-size-bytes", package.PackageSizeBytes.ToString() ),
-                    CreateElement( "span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed.ToString() ),
+                    CreateElement( "span", "package-size-bytes-uncompressed", package.PackageSizeBytesUncompressed.ToString() )//,
                     //new XText( @"(Package Constituents: " ),
-                    constituentLinkElement
+                    //constituentLinkElement
                     //,
                     //new XText( @")" )
                     );
