@@ -134,6 +134,20 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             return package.PackageEtag != null ? string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", package.Name, package.PackageEtag) : string.Format(CultureInfo.InvariantCulture, "{0}.cab", package.Name);
         }
 
+        /// <summary>
+        /// Create a file name
+        /// </summary>
+        /// <returns>
+        /// A string containing the file name
+        /// </returns>
+        public static string CreatePackageFileNameUri(Package package)
+        {
+            if (null == package)
+                return null;
+
+            return package.PackageEtag != null ? string.Format(CultureInfo.InvariantCulture, "{0}({1}).cab", System.Uri.EscapeDataString(package.Name), package.PackageEtag) : string.Format(CultureInfo.InvariantCulture, "{0}.cab", System.Uri.EscapeDataString(package.Name));
+        }
+
         #region Load information methods
 
         /// <summary>
@@ -791,12 +805,12 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var brandingPackageElement1 = CreateElement("a", "branding-package-link", Downloader.BrandingPackageName1);
             brandingPackageElement1.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BrandingPackageName1));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", System.Uri.EscapeDataString(Downloader.BrandingPackageName1)));
 
             var brandingPackageElement2 = CreateElement("a", "branding-package-link", Downloader.BrandingPackageName2);
             brandingPackageElement2.SetAttributeValue(
                 XName.Get("href", string.Empty),
-                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", Downloader.BrandingPackageName2));
+                string.Format(CultureInfo.InvariantCulture, @"packages/{0}.cab", System.Uri.EscapeDataString(Downloader.BrandingPackageName2)));
 
             bool includeSelLoc = false;
             foreach (var bookTemp in product.Books)
@@ -848,7 +862,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 
                 currentLinkElement.SetAttributeValue(
                     XName.Get("href", string.Empty),
-                    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), CreatePackageFileName(package)));
+                    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), CreatePackageFileNameUri(package)));
 
                 //var constituentLinkElement = CreateElement("a", "package-constituent-link", package.PackageConstituentLinkDescription);
                 //constituentLinkElement.SetAttributeValue(
