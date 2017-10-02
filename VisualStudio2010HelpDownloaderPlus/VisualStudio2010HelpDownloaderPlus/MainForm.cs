@@ -38,7 +38,7 @@ namespace VisualStudio2010HelpDownloaderPlus
 
             _comboBoxFilter.DisplayMember = "NameNormalized";
             _textBoxDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "HelpLibrary");
-            _textBoxDirectory.Text = Path.Combine(@"F:\Visual Studio\HelpLibrary");
+            //_textBoxDirectory.Text = Path.Combine(@"F:\Visual Studio\HelpLibrary");
         }
 
         #region UI methods
