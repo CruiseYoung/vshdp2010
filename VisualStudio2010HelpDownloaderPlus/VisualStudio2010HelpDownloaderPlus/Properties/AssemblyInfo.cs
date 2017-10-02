@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("Visual Studio 2010 Help Downloader Plus")]
 [assembly: AssemblyDescription("Help Library packages downloader")]
-[assembly: AssemblyConfiguration("Beta")]
+[assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("Visual Studio 2010 Help Downloader Plus")]
 [assembly: AssemblyCopyright("© 2011-2017 Modify by Cruise Young, Based on Alexander Kozlenko")]
 [assembly: AssemblyCulture("")]
