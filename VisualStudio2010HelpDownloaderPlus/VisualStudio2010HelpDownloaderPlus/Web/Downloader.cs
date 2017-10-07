@@ -568,6 +568,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             if (string.IsNullOrWhiteSpace(filePath))
                 return;
 
+            //DateTime lastModifiedTimeUtc = lastModifiedTime.ToUniversalTime();
             try
             {
                 if (bDirectory)
@@ -604,7 +605,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
                 var response = (HttpWebResponse)request.GetResponse();
 
-                result = response.LastModified;
+                result = response.LastModified/*.ToUniversalTime()*/;
                 response.Close();
             }
             catch (Exception e)

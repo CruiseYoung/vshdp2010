@@ -482,7 +482,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 ////book.Locale = new Locale() { Code = detailsElement.GetChildClassValue("locale") };
                 //book.Name = detailsElement.GetChildClassValue("name");
                 //book.Description = detailsElement.GetChildClassValue("description");
-                book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"));
+                book.LastModified = DateTime.Parse(detailsElement.GetChildClassValue("last-modified"))/*.ToUniversalTime()*/;
                 book.ProductLink = detailsElement.GetChildClassAttributeValue("product-link", "href");
                 book.ProductDescription = detailsElement.GetChildClassValue("product-link");
                 book.ProductGroupLink = detailsElement.GetChildClassAttributeValue("product-group-link", "href");
@@ -831,9 +831,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
             var productGroupLinkElement = CreateElement("a", "product-group-link", book.ProductGroupDescription);
             productGroupLinkElement.SetAttributeValue( XName.Get( "href", string.Empty), /*"HelpContentSetup.msha"*/book.ProductGroupLink);
 
-            var lastModifiedFmtBook = (book.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
+            //var lastModifiedFmtBook = (book.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
+            var lastModifiedFmtBook = "s";
 
-            XElement bookLastModified = CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString(lastModifiedFmtBook, CultureInfo.InvariantCulture));
+            XElement bookLastModified = CreateElement("span", "last-modified", book.LastModified/*.ToUniversalTime()*/.ToString(lastModifiedFmtBook/*, CultureInfo.InvariantCulture*/));
 
             detailsElement.Add(
                     CreateElement("span", "vendor", book.Vendor),
@@ -841,7 +842,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     CreateElement("span", "name", book.Name),
                     CreateElement("span", "description", book.Description),
                     bookLastModified,
-                    //CreateElement("span", "last-modified", book.LastModified.ToUniversalTime().ToString("O")),
+                    //CreateElement("span", "last-modified", book.LastModified/*.ToUniversalTime()*/.ToString("O")),
                     iconElement,
                     //productLinkElement,
                     productGroupLinkElement,
@@ -869,9 +870,10 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 //    XName.Get("href", string.Empty),
                 //    string.Format(CultureInfo.InvariantCulture, @"packages/{0}/{1}", book.Locale.ToLowerInvariant(), package.Name));
 
-                var lastModifiedFmt = (package.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
+                //var lastModifiedFmt = (package.LastModified.Millisecond % 10) == 0 ? "yyyy-MM-ddThh:mm:ss.ffZ" : "yyyy-MM-ddThh:mm:ss.fffZ";
+                var lastModifiedFmt = "s";
 
-                XElement lastModified = CreateElement("span", "last-modified", package.LastModified.ToUniversalTime().ToString(lastModifiedFmt, CultureInfo.InvariantCulture));
+                XElement lastModified = CreateElement("span", "last-modified", package.LastModified/*.ToUniversalTime()*/.ToString(lastModifiedFmt/*, CultureInfo.InvariantCulture*/));
 
                 packageElement.Add(
                     CreateElement("span", "name", package.Name),
