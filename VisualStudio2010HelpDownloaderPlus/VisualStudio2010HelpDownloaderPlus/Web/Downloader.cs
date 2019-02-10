@@ -374,13 +374,16 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
 
             string helpLibDir = directory.Substring(0, directory.LastIndexOf(MainForm.VsDirName, StringComparison.Ordinal));
             string oldDirectory = helpLibDir + MainForm.OldVsDirName;
-            // Cleaunup old packages
-            CleanupOldPackages(packages, directory, oldDirectory, false, false);
-            CleanupOldPackages(packages, directory, Path.Combine(oldDirectory, "packages"), false, true);
-            foreach (var loc in locales)
+            if (oldDirectory != directory)
             {
-                string targetDirectoryLoc = Path.Combine(oldDirectory, "packages", loc.ToLowerInvariant());
-                CleanupOldPackages(packages, directory, targetDirectoryLoc, false, true);
+                // Cleaunup old packages
+                CleanupOldPackages(packages, directory, oldDirectory, false, false);
+                CleanupOldPackages(packages, directory, Path.Combine(oldDirectory, "packages"), false, true);
+                foreach (var loc in locales)
+                {
+                    string targetDirectoryLoc = Path.Combine(oldDirectory, "packages", loc.ToLowerInvariant());
+                    CleanupOldPackages(packages, directory, targetDirectoryLoc, false, true);
+                }
             }
 
             // Create directory
