@@ -60,6 +60,7 @@
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Web\AuthenticodeTools.cs" />
     <Compile Include="Web\Downloader.cs" />
     <Compile Include="Web\HelpIndexManager.cs" />
     <Compile Include="Web\ItemBase.cs" />

@@ -435,7 +435,7 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                     {
                         package.PackageSizeBytes = FetchContentLength(package.CurrentLink);
                     }
-                    if (package.PackageSizeBytes != curFileInfo.Length)
+                    if (package.PackageSizeBytes != curFileInfo.Length || !AuthenticodeTools.IsTrusted(targetFileName))
                     {
                         download = true;
                         File.Delete(targetFileName);
@@ -450,7 +450,16 @@ namespace VisualStudio2010HelpDownloaderPlus.Web
                 }
 
                 if (download)
+                {
                     _client.DownloadFile(package.CurrentLink, targetFileName);
+
+                    if (!AuthenticodeTools.IsTrusted(targetFileName))
+                    {
+                        //Debug.Print("The signature on '{0}' is not valid - deleting");
+                        File.Delete(targetFileName);
+                        throw new InvalidDataException($"The signature on '{targetFileName}' is not valid - deleting");
+                    }
+                }
 
                 FileLastModifiedTime(targetFileName, package.LastModified);
 

@@ -1,7 +1,7 @@
 ﻿软件名称：  Visual Studio 2010 Help Downloader Plus
 原 名 称：  Visual Studio 2010 Help Downloader
 原 官 网：  http://vshelpdownloader.codeplex.com/ (已失效)
-软件版本：  2.0.0.7
+软件版本：  2.0.0.8
 基础版本：  1.0.0.3 Beta
 软件著作人：Alexander Kozlenko
 软件修改人：Cruise Young
@@ -10,6 +10,9 @@
 QQ交流群:   8035490
 
 修改内容：
+  v2.0.0.8(2019.02.14)更新内容
+	1、增加文件数字签名信息检查；
+
   v2.0.0.7(2017.10.02日)更新内容
     1、修复当一文件名包含另一文件名时，在清除旧文件时，被误删的问题；
     2、修复在Win10无法获取下载列表的bug；
